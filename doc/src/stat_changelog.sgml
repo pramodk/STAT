@@ -6,6 +6,12 @@
         invoke python with -s to prevent user site-packages from interferring
         allow specification of GSETTINGS_SCHEMA_DIR for GUI
       </para></listitem>
+      <listitem><para>
+        Added gdb-oneapi backend support
+      </para></listitem>
+      <listitem><para>
+        Added py-spy backend support
+      </para></listitem>
     </itemizedlist>
   </para>
 </section>

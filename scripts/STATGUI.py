@@ -53,7 +53,7 @@ if HAVE_DLOPEN is True:
     new_dlflags = ctypes.RTLD_GLOBAL | dlflags
     sys.setdlopenflags(new_dlflags)
 
-from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
+from STAT import STAT_FrontEnd, intArray, STAT_LOG_NONE, STAT_LOG_FE, STAT_LOG_BE, STAT_LOG_CP, STAT_LOG_MRN, STAT_LOG_SW, STAT_LOG_SWERR, STAT_OK, STAT_APPLICATION_EXITED, STAT_VERBOSE_ERROR, STAT_VERBOSE_FULL, STAT_VERBOSE_STDOUT, STAT_TOPOLOGY_AUTO, STAT_TOPOLOGY_DEPTH, STAT_TOPOLOGY_FANOUT, STAT_TOPOLOGY_USER, STAT_PENDING_ACK, STAT_LAUNCH, STAT_ATTACH, STAT_SERIAL_ATTACH, STAT_GDB_ATTACH, STAT_SERIAL_GDB_ATTACH, STAT_PYSPY_ATTACH, STAT_SERIAL_PYSPY_ATTACH, STAT_SAMPLE_FUNCTION_ONLY, STAT_SAMPLE_LINE, STAT_SAMPLE_PC, STAT_SAMPLE_COUNT_REP, STAT_SAMPLE_THREADS, STAT_SAMPLE_CLEAR_ON_SAMPLE, STAT_SAMPLE_PYTHON, STAT_SAMPLE_MODULE_OFFSET, STAT_CP_NONE, STAT_CP_SHAREAPPNODES, STAT_CP_EXCLUSIVE
 HAVE_OPENMP_SUPPORT = True
 try:
     from STAT import STAT_SAMPLE_OPENMP
@@ -207,6 +207,10 @@ class STATGUI(STATDotWindow):
             gdb_path = os.environ['STAT_GDB']
         except:
             gdb_path = 'gdb'
+        try:
+            pyspy_path = os.environ['STAT_PYSPY']
+        except:
+            pyspy_path = 'py-spy'
         options = {'Remote Host':                      "localhost",
                    'Remote Host Shell':                "ssh",
                    'Serial Remote Host Shell':         "ssh",
@@ -239,6 +243,9 @@ class STATGUI(STATDotWindow):
                    'Use MRNet Printf':                 False,
                    'GDB BE':                           False,
                    'GDB Path':                         gdb_path,
+                   'PySpy BE':                         False,
+                   'PySpy Path':                       pyspy_path,
+                   'Use PySpy':                        False,
                    'With CUDA Quick':                  False,
                    'Verbosity Type':                   'error',
                    'Communication Nodes':              '',
@@ -349,6 +356,8 @@ class STATGUI(STATDotWindow):
                     self.options['GDB BE'] = True
                 if args.cudaquick is True:
                     self.options['With CUDA Quick'] = True
+            if args.pyspy is True:
+                self.options['Use PySpy'] = True
             if args.log is not None:
                 if 'CP' in args.log:
                     self.options['Log CP'] = True
@@ -421,6 +430,8 @@ host[1-10,12,15-20];otherhost[30]
                 if HAVE_GDB_SUPPORT:
                     if args.gdb is not None:
                         self.options['GDB BE'] = True
+                if args.pyspy is not None:
+                    self.options['Use PySpy'] = True
                 stat_wait_dialog.show_wait_dialog_and_run(self.attach_cb, (None, False, False, STAT_ATTACH), self.attach_task_list)
                 return
             elif args.serial is not None:
@@ -566,7 +577,7 @@ host[1-10,12,15-20];otherhost[30]
         frame.add(text_view)
         vbox.pack_start(frame, False, False, 0)
 
-        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH and self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
+        if self.STAT.getApplicationOption() != STAT_SERIAL_ATTACH and self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH and self.STAT.getApplicationOption() != STAT_SERIAL_PYSPY_ATTACH:
             frame = gtk.Frame(label='Job Launcher (host:PID)')
             text_view = gtk.TextView()
             text_buffer = gtk.TextBuffer()
@@ -996,6 +1007,8 @@ host[1-10,12,15-20];otherhost[30]
                 self.STAT.addSerialProcess(process)
             if self.options['GDB BE'] is True:
                 self.attach_cb(None, False, True, STAT_SERIAL_GDB_ATTACH)
+            elif self.options['Use PySpy'] is True:
+                self.attach_cb(None, False, True, STAT_SERIAL_PYSPY_ATTACH)
             else:
                 self.attach_cb(None, False, True, STAT_SERIAL_ATTACH)
         else:
@@ -1235,6 +1248,8 @@ host[1-10,12,15-20];otherhost[30]
         if HAVE_GDB_SUPPORT:
             self.pack_check_button(vbox2, 'GDB BE')
             self.pack_string_option(vbox2, 'GDB Path', attach_dialog)
+        self.pack_check_button(vbox2, 'Use PySpy')
+        self.pack_string_option(vbox2, 'PySpy Path', attach_dialog)
         frame.add(vbox2)
         vbox.pack_start(frame, False, False, 5)
         frame = gtk.Frame(label='Debug Logs')
@@ -1288,6 +1303,8 @@ host[1-10,12,15-20];otherhost[30]
             self.STAT.addSerialProcess(process)
         if self.options['GDB BE'] is True:
             self.attach_cb(attach_dialog, False, True, STAT_SERIAL_GDB_ATTACH)
+        elif self.options['Use PySpy'] is True:
+            self.attach_cb(attach_dialog, False, True, STAT_SERIAL_PYSPY_ATTACH)
         else:
             self.attach_cb(attach_dialog, False, True, STAT_SERIAL_ATTACH)
         return True
@@ -1394,7 +1411,10 @@ host[1-10,12,15-20];otherhost[30]
         self.STAT.setToolDaemonExe(self.options['Tool Daemon Path'])
         self.STAT.setFilterPath(self.options['Filter Path'])
         os.environ['STAT_GDB'] = self.options['GDB Path']
+        os.environ['STAT_PYSPY'] = self.options['PySpy Path']
         log_type = STAT_LOG_NONE
+        if self.options['Use PySpy']and application_option != STAT_SERIAL_PYSPY_ATTACH:
+            application_option = STAT_PYSPY_ATTACH
         if self.options['GDB BE'] and application_option != STAT_SERIAL_GDB_ATTACH:
             application_option = STAT_GDB_ATTACH
         if self.options['Log Frontend']:
@@ -1484,7 +1504,7 @@ host[1-10,12,15-20];otherhost[30]
             self.on_fatal_error()
             return False
 
-        if application_option != STAT_SERIAL_ATTACH and application_option != STAT_SERIAL_GDB_ATTACH:
+        if application_option != STAT_SERIAL_ATTACH and application_option != STAT_SERIAL_GDB_ATTACH and application_option != STAT_SERIAL_PYSPY_ATTACH:
             while 1:
                 run_gtk_main_loop()
                 ret = self.STAT.connectMrnetTree(False)
@@ -2353,7 +2373,7 @@ host[1-10,12,15-20];otherhost[30]
             arg_list.append(filepath)
             cli_attach = False
             if self.STAT is not None:
-                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH or self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH:
+                if self.STAT.getApplicationOption() == STAT_SERIAL_ATTACH or self.STAT.getApplicationOption() != STAT_SERIAL_GDB_ATTACH or self.STAT.getApplicationOption() != STAT_SERIAL_PYSPY_ATTACH:
                     cli_attach = True
             if cli_attach is True:
                 arg_list.append('-e')
