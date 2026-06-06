@@ -7,6 +7,12 @@ if test -n "$STAT_PREFIX" ; then
     export prefix=$STAT_PREFIX
 fi
 
+
+# Automake may substitute @pythondir@ as ${PYTHON_PREFIX}/..., so keep these
+# runtime variables aligned with the wrapper prefix.
+export PYTHON_PREFIX=${prefix}
+export PYTHON_EXEC_PREFIX=${exec_prefix}
+
 if test -z $LD_LIBRARY_PATH
 then
 	export LD_LIBRARY_PATH=$prefix/lib
