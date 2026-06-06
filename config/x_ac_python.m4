@@ -52,14 +52,21 @@ AC_DEFUN([X_AC_PYTHON], [
   AC_MSG_RESULT($python_version)
   AM_COND_IF([ENABLE_GDB], [BELIBS="-lpython$python_version $BELIBS"], [])
 
+  enable_pyspy=no
   AC_ARG_WITH(pyspy,
     [AS_HELP_STRING([--with-pyspy=path],
       [Use path for py-spy backend]
     )],
-    [withpyspy="$withval"
-      AM_CONDITIONAL([ENABLE_PYSPY], true)
+    [if test "x$withval" = "xno"; then
+      withpyspy=py-spy
+    else
+      withpyspy="$withval"
+      enable_pyspy=yes
+      BELIBS="-lpython$python_version $BELIBS"
+    fi
     ],
     [withpyspy=pyspy]
   )
+  AM_CONDITIONAL([ENABLE_PYSPY], [test "x$enable_pyspy" = "xyes"])
   AC_PATH_PROG(pyspycmd,$withpyspy,[py-spy],/,/usr/local/bin:/usr/bin:/bin/usr/local/bin)
 ])

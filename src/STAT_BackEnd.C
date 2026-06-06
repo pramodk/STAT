@@ -1550,7 +1550,19 @@ StatError_t STAT_BackEnd::pause()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
 
     if (usingPySpy_ == true)
+    {
+        for (unsigned int i = 0; i < proctabSize_; i++)
+        {
+            if (kill(proctab_[i].pid, SIGSTOP) == -1)
+            {
+                StatError_t error = (errno == ESRCH) ? STAT_APPLICATION_EXITED : STAT_PAUSE_ERROR;
+                printMsg(error, __FILE__, __LINE__, "Failed to SIGSTOP py-spy target pid %d: %s\n", proctab_[i].pid, strerror(errno));
+                return error;
+            }
+        }
+        isRunning_ = false;
         return STAT_OK;
+    }
 
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
@@ -1638,7 +1650,19 @@ StatError_t STAT_BackEnd::resume()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 
     if (usingPySpy_ == true)
+    {
+        for (unsigned int i = 0; i < proctabSize_; i++)
+        {
+            if (kill(proctab_[i].pid, SIGCONT) == -1)
+            {
+                StatError_t error = (errno == ESRCH) ? STAT_APPLICATION_EXITED : STAT_RESUME_ERROR;
+                printMsg(error, __FILE__, __LINE__, "Failed to SIGCONT py-spy target pid %d: %s\n", proctab_[i].pid, strerror(errno));
+                return error;
+            }
+        }
+        isRunning_ = true;
         return STAT_OK;
+    }
 
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
@@ -1993,13 +2017,34 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
     {
         static int threadCountWarning = 0;
         int nodeId, prevId, k, l, count;
-        char *currentFrame;
+        char *currentFrame, *traceBuffer;
         const char *allTraces;
         string sampleFunctionName, path, name, currentFrameString;
         string::size_type startPos, endPos;
         PyObject *sampleFunc, *pArgs, *pValue;
         StatBitVectorEdge_t *edge = NULL;
         map<string, string>::iterator nodeAttrsIter;
+        bool sampleWasPaused = (isRunning_ == false);
+        auto continuePySpyTarget = [this](int pid) -> StatError_t
+        {
+            if (kill(pid, SIGCONT) == -1)
+            {
+                StatError_t error = (errno == ESRCH) ? STAT_APPLICATION_EXITED : STAT_RESUME_ERROR;
+                printMsg(error, __FILE__, __LINE__, "Failed to SIGCONT py-spy target pid %d: %s\n", pid, strerror(errno));
+                return error;
+            }
+            return STAT_OK;
+        };
+        auto pausePySpyTarget = [this](int pid) -> StatError_t
+        {
+            if (kill(pid, SIGSTOP) == -1)
+            {
+                StatError_t error = (errno == ESRCH) ? STAT_APPLICATION_EXITED : STAT_PAUSE_ERROR;
+                printMsg(error, __FILE__, __LINE__, "Failed to SIGSTOP py-spy target pid %d: %s\n", pid, strerror(errno));
+                return error;
+            }
+            return STAT_OK;
+        };
 
         sampleFunctionName = "get_trace";
         sampleFunc = PyObject_GetAttrString(pySpyModule_, sampleFunctionName.c_str());
@@ -2038,7 +2083,31 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     statFreeEdge(edge);
                     continue;
                 }
+                if (sampleWasPaused)
+                {
+                    statError = continuePySpyTarget(proctab_[j].pid);
+                    if (statError != STAT_OK)
+                    {
+                        statFreeEdge(edge);
+                        Py_DECREF(pArgs);
+                        Py_DECREF(sampleFunc);
+                        return statError;
+                    }
+                }
                 pValue = PyObject_CallObject(sampleFunc, pArgs);
+                if (sampleWasPaused)
+                {
+                    statError = pausePySpyTarget(proctab_[j].pid);
+                    if (statError != STAT_OK)
+                    {
+                        statFreeEdge(edge);
+                        Py_DECREF(pArgs);
+                        if (pValue != NULL)
+                            Py_DECREF(pValue);
+                        Py_DECREF(sampleFunc);
+                        return statError;
+                    }
+                }
                 if (pValue == NULL)
                 {
                     printMsg(STAT_WARNING, __FILE__, __LINE__, "%s call failed for pid %d\n", sampleFunctionName.c_str(), proctab_[j].pid);
@@ -2047,8 +2116,27 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     Py_DECREF(pArgs);
                     continue;
                 }
-                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), PyUnicode_AsUTF8(pValue));
                 allTraces = PyUnicode_AsUTF8(pValue);
+                if (allTraces == NULL)
+                {
+                    printMsg(STAT_WARNING, __FILE__, __LINE__, "Failed to convert %s result for pid %d\n", sampleFunctionName.c_str(), proctab_[j].pid);
+                    statFreeEdge(edge);
+                    PyErr_Print();
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pValue);
+                    continue;
+                }
+                printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Result of %s call: %s\n", sampleFunctionName.c_str(), allTraces);
+                traceBuffer = strdup(allTraces);
+                if (traceBuffer == NULL)
+                {
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to copy py-spy trace buffer\n");
+                    statFreeEdge(edge);
+                    Py_DECREF(pArgs);
+                    Py_DECREF(pValue);
+                    Py_DECREF(sampleFunc);
+                    return STAT_ALLOCATE_ERROR;
+                }
                 prevId = 0;
                 path = "";
                 if (find(threadIds_.begin(), threadIds_.end(), k) == threadIds_.end())
@@ -2060,7 +2148,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                         threadCountWarning++;
                     }
                 }
-                currentFrame = strtok((char *)allTraces, "\n");
+                currentFrame = strtok(traceBuffer, "\n");
                 while (currentFrame != NULL)
                 {
                     if (strcmp(currentFrame, "#endtrace") == 0)
@@ -2110,6 +2198,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                     }
                     currentFrame = strtok(NULL, "\n");
                 }
+                free(traceBuffer);
                 Py_DECREF(pValue);
                 if (!(sampleType_ & STAT_SAMPLE_THREADS))
                 {
@@ -2122,6 +2211,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
             if (statError != STAT_OK)
             {
                 printMsg(statError, __FILE__, __LINE__, "Error updating 3d nodes and edges for trace %d of %d\n", i + 1, nTraces);
+                Py_DECREF(sampleFunc);
                 return statError;
             }
         } // for (i = 0; i < nTraces; i++)
