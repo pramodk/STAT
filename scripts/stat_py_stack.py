@@ -9,6 +9,9 @@ _FRAME_RE = re.compile(
     r'^\s+\((?P<kind>Python|C)\)\s+File "(?P<source>.*)",\s+'
     r"line (?P<line>\d+),\s+in (?P<function>.*?)(?:\s+\((?P<object>.*)\))?\s*$"
 )
+_THREAD_RE = re.compile(
+    r"^Traceback for thread (?P<tid>\d+)(?: \((?P<name>[^)]*)\))?.*:\s*$"
+)
 _FALSE_VALUES = {"0", "false", "no", "off"}
 
 
@@ -39,30 +42,59 @@ def _format_frame(line):
     return "%s@%s:%s" % (function, source, lineno)
 
 
-def _parse_pystack_remote(output):
+def _trace_priority(trace, pid):
+    tid = trace.get("tid")
+    name = (trace.get("name") or "").lower()
+    frames = trace.get("frames") or []
+    has_python = any(not frame.startswith("native:") for frame in frames)
+
+    if pid is not None and tid == str(pid):
+        return 0
+    if name in {"python", "python3"}:
+        return 1
+    if has_python:
+        return 2
+    return 3
+
+
+def _parse_pystack_remote(output, pid=None):
     traces = []
-    current = []
+    current = None
+
+    def finish_current():
+        if current is not None and current["frames"]:
+            traces.append(current)
 
     for line in output.splitlines():
         stripped = line.strip()
         if not stripped:
             continue
-        if stripped.startswith("Traceback for thread "):
-            if current:
-                traces.extend(current)
-                traces.append("#endtrace")
-                current = []
+
+        thread_match = _THREAD_RE.match(stripped)
+        if thread_match is not None:
+            finish_current()
+            current = {
+                "tid": thread_match.group("tid"),
+                "name": thread_match.group("name") or "",
+                "index": len(traces),
+                "frames": [],
+            }
             continue
 
         frame = _format_frame(line)
         if frame is not None:
-            current.append(frame)
+            if current is None:
+                current = {"tid": "", "name": "", "index": len(traces), "frames": []}
+            current["frames"].append(frame)
 
-    if current:
-        traces.extend(current)
-        traces.append("#endtrace")
+    finish_current()
+    traces.sort(key=lambda trace: (_trace_priority(trace, pid), trace["index"]))
 
-    return traces
+    formatted = []
+    for trace in traces:
+        formatted.extend(trace["frames"])
+        formatted.append("#endtrace")
+    return formatted
 
 
 def _pystack_command(pid):
@@ -108,7 +140,7 @@ def get_trace(pid):
         detail = (proc.stderr or proc.stdout).strip()
         raise RuntimeError(detail or "pystack remote failed for pid %s" % pid)
 
-    traces = _parse_pystack_remote(proc.stdout)
+    traces = _parse_pystack_remote(proc.stdout, pid)
     if not traces:
         raise RuntimeError("pystack remote produced no parseable frames for pid %s" % pid)
 
