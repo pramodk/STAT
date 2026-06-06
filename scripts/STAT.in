@@ -9,6 +9,12 @@ fi
 export STAT_BIN=$prefix/bin/STATbin
 export STATBENCH_BIN=$prefix/bin/STATBenchbin
 
+
+# Automake may substitute @pythondir@ as ${PYTHON_PREFIX}/..., so keep these
+# runtime variables aligned with the wrapper prefix.
+export PYTHON_PREFIX=${prefix}
+export PYTHON_EXEC_PREFIX=${exec_prefix}
+
 if test -z $LD_LIBRARY_PATH
 then
 	export LD_LIBRARY_PATH=$prefix/lib
