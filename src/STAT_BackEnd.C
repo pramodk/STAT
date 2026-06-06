@@ -1316,7 +1316,7 @@ StatError_t STAT_BackEnd::attach()
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
     if (usingPySpy_ == true || usingPyStack_ == true)
-        return STAT_OK;
+        return pause();
 
 #ifdef STAT_GDB_BE
     if (usingGdb_ == true)
