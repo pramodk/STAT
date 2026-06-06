@@ -65,7 +65,9 @@ typedef enum {
     STAT_GDB_ATTACH,
     STAT_SERIAL_GDB_ATTACH,
     STAT_PYSPY_ATTACH,
-    STAT_SERIAL_PYSPY_ATTACH
+    STAT_SERIAL_PYSPY_ATTACH,
+    STAT_PYSTACK_ATTACH,
+    STAT_SERIAL_PYSTACK_ATTACH
 } StatLaunch_t;
 
 //! An enum for MRNet topology specification type

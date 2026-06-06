@@ -55,6 +55,7 @@ enum StatSampleOptions_t {
     STAT_SAMPLE_CUDA_QUICK = 0x100,
 #endif
     STAT_SAMPLE_PYSPY = 0x200,
+    STAT_SAMPLE_PYSTACK = 0x400,
     STAT_SAMPLE_UNKNOWN=0xff
 } ;
 

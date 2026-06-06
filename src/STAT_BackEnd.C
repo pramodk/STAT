@@ -87,6 +87,7 @@ STAT_BackEnd::STAT_BackEnd(StatDaemonLaunch_t launchType) :
     gBePtr = this;
     registerSignalHandlers(true);
     usingPySpy_ = false;
+    usingPyStack_ = false;
 }
 
 STAT_BackEnd::~STAT_BackEnd()
@@ -158,6 +159,7 @@ STAT_BackEnd::~STAT_BackEnd()
     gBePtr = NULL;
     usingGdb_ = false;
     usingPySpy_ = false;
+    usingPyStack_ = false;
 }
 
 void STAT_BackEnd::clear2dNodesAndEdges()
@@ -783,7 +785,7 @@ StatError_t STAT_BackEnd::mainLoop()
     do
     {
 #if defined(GROUP_OPS)
-        if (doGroupOps_ && usingGdb_ == false && usingPySpy_ == false)
+        if (doGroupOps_ && usingGdb_ == false && usingPySpy_ == false && usingPyStack_ == false)
         {
   #ifdef DYSECTAPI
             /* Let BPatch handle its events */
@@ -793,7 +795,7 @@ StatError_t STAT_BackEnd::mainLoop()
 #endif
 
         /* Set the stackwalker notification file descriptor */
-        if (processMap_.size() > 0 && processMapNonNull_ > 0 && usingGdb_ == false && usingPySpy_ == false)
+        if (processMap_.size() > 0 && processMapNonNull_ > 0 && usingGdb_ == false && usingPySpy_ == false && usingPyStack_ == false)
             swNotificationFd = ProcDebug::getNotificationFD();
         else
             swNotificationFd = -1;
@@ -1313,7 +1315,7 @@ StatError_t STAT_BackEnd::attach()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Attaching to all application processes\n");
 
-    if (usingPySpy_ == true)
+    if (usingPySpy_ == true || usingPyStack_ == true)
         return STAT_OK;
 
 #ifdef STAT_GDB_BE
@@ -1549,14 +1551,14 @@ StatError_t STAT_BackEnd::pause()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Pausing all application processes\n");
 
-    if (usingPySpy_ == true)
+    if (usingPySpy_ == true || usingPyStack_ == true)
     {
         for (unsigned int i = 0; i < proctabSize_; i++)
         {
             if (kill(proctab_[i].pid, SIGSTOP) == -1)
             {
                 StatError_t error = (errno == ESRCH) ? STAT_APPLICATION_EXITED : STAT_PAUSE_ERROR;
-                printMsg(error, __FILE__, __LINE__, "Failed to SIGSTOP py-spy target pid %d: %s\n", proctab_[i].pid, strerror(errno));
+                printMsg(error, __FILE__, __LINE__, "Failed to SIGSTOP Python stack target pid %d: %s\n", proctab_[i].pid, strerror(errno));
                 return error;
             }
         }
@@ -1649,14 +1651,14 @@ StatError_t STAT_BackEnd::resume()
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Resuming all application processes\n");
 
-    if (usingPySpy_ == true)
+    if (usingPySpy_ == true || usingPyStack_ == true)
     {
         for (unsigned int i = 0; i < proctabSize_; i++)
         {
             if (kill(proctab_[i].pid, SIGCONT) == -1)
             {
                 StatError_t error = (errno == ESRCH) ? STAT_APPLICATION_EXITED : STAT_RESUME_ERROR;
-                printMsg(error, __FILE__, __LINE__, "Failed to SIGCONT py-spy target pid %d: %s\n", proctab_[i].pid, strerror(errno));
+                printMsg(error, __FILE__, __LINE__, "Failed to SIGCONT Python stack target pid %d: %s\n", proctab_[i].pid, strerror(errno));
                 return error;
             }
         }
@@ -2013,18 +2015,20 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Gathering and merging %d traces from each task\n", nTraces);
 
-    if (usingPySpy_ == true)
+    if (usingPySpy_ == true || usingPyStack_ == true)
     {
         static int threadCountWarning = 0;
         int nodeId, prevId, k, l, count;
         char *currentFrame, *traceBuffer;
         const char *allTraces;
-        string sampleFunctionName, path, name, currentFrameString;
+        string sampleFunctionName, path, name, currentFrameString, sampleBackendName;
         string::size_type startPos, endPos;
-        PyObject *sampleFunc, *pArgs, *pValue;
+        PyObject *sampleModule, *sampleFunc, *pArgs, *pValue;
         StatBitVectorEdge_t *edge = NULL;
         map<string, string>::iterator nodeAttrsIter;
-        bool sampleWasPaused = (isRunning_ == false);
+        bool sampleWasPaused = (usingPySpy_ == true && isRunning_ == false);
+        sampleModule = usingPyStack_ == true ? pyStackModule_ : pySpyModule_;
+        sampleBackendName = usingPyStack_ == true ? "PyStack" : "py-spy";
         auto continuePySpyTarget = [this](int pid) -> StatError_t
         {
             if (kill(pid, SIGCONT) == -1)
@@ -2047,12 +2051,12 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         };
 
         sampleFunctionName = "get_trace";
-        sampleFunc = PyObject_GetAttrString(pySpyModule_, sampleFunctionName.c_str());
+        sampleFunc = PyObject_GetAttrString(sampleModule, sampleFunctionName.c_str());
         if (!sampleFunc || !PyCallable_Check(sampleFunc))
         {
             if (PyErr_Occurred())
                 PyErr_Print();
-            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from python GDB module\n", sampleFunctionName.c_str());
+            printMsg(STAT_DAEMON_ERROR, __FILE__, __LINE__, "Failed to load function %s from %s module\n", sampleFunctionName.c_str(), sampleBackendName.c_str());
             return STAT_DAEMON_ERROR;
         }
 
@@ -2130,7 +2134,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
                 traceBuffer = strdup(allTraces);
                 if (traceBuffer == NULL)
                 {
-                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to copy py-spy trace buffer\n");
+                    printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "Failed to copy Python stack trace buffer\n");
                     statFreeEdge(edge);
                     Py_DECREF(pArgs);
                     Py_DECREF(pValue);
@@ -2218,7 +2222,7 @@ StatError_t STAT_BackEnd::sampleStackTraces(unsigned int nTraces, unsigned int t
         Py_DECREF(sampleFunc);
 
         return STAT_OK;
-    } // if (usingPySpy_ == true)
+    } // if (usingPySpy_ == true || usingPyStack_ == true)
     }
 
 #ifdef STAT_GDB_BE
@@ -3428,7 +3432,7 @@ StatError_t STAT_BackEnd::detach(unsigned int *stopArray, int stopArrayLen)
 
     printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Detaching from application processes, leaving %d processes stopped\n", stopArrayLen);
 
-    if (usingPySpy_ == true)
+    if (usingPySpy_ == true || usingPyStack_ == true)
         return STAT_OK;
 
 #ifdef STAT_GDB_BE

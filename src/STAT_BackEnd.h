@@ -211,6 +211,7 @@ class STAT_BackEnd
         virtual StatError_t initGdb() = 0;
 #endif
         virtual StatError_t initPySpy() = 0;
+        virtual StatError_t initPyStack() = 0;
 
         //! Initialize and set up the job launcher
         /*
@@ -662,9 +663,11 @@ class STAT_BackEnd
 #ifdef STAT_GDB_BE
         PyObject *gdbModule_;   /*!< the Python stat_cuda_gdb module */
 #endif
-        PyObject *pySpyModule_;   /*!< the Python stat_cuda_gdb module */
+        PyObject *pySpyModule_;   /*!< the Python stat_py_spy module */
+        PyObject *pyStackModule_;   /*!< the Python stat_py_stack module */
         bool usingGdb_;     /*!< whether we are using GDB instead of Dyninst */
         bool usingPySpy_;     /*!< whether we are using py-spy */
+        bool usingPyStack_;     /*!< whether we are using PyStack */
 
 };
 

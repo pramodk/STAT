@@ -542,7 +542,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     printMsg(STAT_VERBOSITY, __FILE__, __LINE__, "\tInitializing MRNet...\n");
     gStartTime.setTime();
 
-    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH || applicationOption_ == STAT_SERIAL_PYSPY_ATTACH)
+    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH || applicationOption_ == STAT_SERIAL_PYSPY_ATTACH || applicationOption_ == STAT_SERIAL_PYSTACK_ATTACH)
     {
 
 #ifdef STAT_GDB_BE
@@ -597,6 +597,32 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
             daemonArgv[daemonArgc - 4] = strdup(pythonPath);
             daemonArgv[daemonArgc - 3] = strdup("-Y");
             daemonArgv[daemonArgc - 2] = strdup(pySpyCommand);
+            daemonArgv[daemonArgc - 1] = NULL;
+        }
+        if (applicationOption_ == STAT_SERIAL_PYSTACK_ATTACH)
+        {
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to send PYTHONPATH for the PyStack BE component.
+            // We also need to send the PyStack path since this variable isn't propagated either.
+            const char *pyStackCommand, *pythonPath;
+            pythonPath = getenv("PYTHONPATH");
+            if (pythonPath == NULL)
+                pythonPath = ":";
+            pyStackCommand = getenv("STAT_PYSTACK");
+            if (pyStackCommand == NULL)
+                pyStackCommand = "pystack";
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT PyStack attach %s and PYTHONPATH %s\n", pyStackCommand, pythonPath);
+            daemonArgc += 4;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[daemonArgc - 5] = strdup("-P");
+            daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+            daemonArgv[daemonArgc - 3] = strdup("-K");
+            daemonArgv[daemonArgc - 2] = strdup(pyStackCommand);
             daemonArgv[daemonArgc - 1] = NULL;
         }
         statError = addDaemonSerialProcArgs(daemonArgc, daemonArgv);
@@ -705,7 +731,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
     }
     topologySize_ = leafInfo_.networkTopology->get_NumNodes();
 
-    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH || applicationOption_ == STAT_SERIAL_PYSPY_ATTACH)
+    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH || applicationOption_ == STAT_SERIAL_PYSPY_ATTACH || applicationOption_ == STAT_SERIAL_PYSTACK_ATTACH)
         topologySize_ -= nApplNodes_; /* We need topologySize_ to not include BEs */
 
     leafInfo_.daemons = applicationNodeMultiSet_;
@@ -727,7 +753,7 @@ StatError_t STAT_FrontEnd::launchMrnetTree(StatTopology_t topologyType, char *to
 
     leafInfo_.networkTopology->get_Leaves(leafInfo_.leafCps);
 
-    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH)
+    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH && applicationOption_ != STAT_SERIAL_PYSTACK_ATTACH)
     {
         gStartTime.setTime();
         statError = sendDaemonInfo();
@@ -2091,10 +2117,10 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
     /* Initialized vector iterators */
     if (topology == "") /* Flat topology */
     {
-        if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH)
+        if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH && applicationOption_ != STAT_SERIAL_PYSTACK_ATTACH)
             fprintf(file, "%s;\n", treeList[0].c_str());
     }
-    else if (topology == "0" && applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH) /* Flat topology */
+    else if (topology == "0" && applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH && applicationOption_ != STAT_SERIAL_PYSTACK_ATTACH) /* Flat topology */
         fprintf(file, "%s;\n", treeList[0].c_str());
     else
     {
@@ -2149,7 +2175,7 @@ StatError_t STAT_FrontEnd::createTopology(char *topologyFileName, StatTopology_t
         }
     }
 
-    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH || applicationOption_ == STAT_SERIAL_PYSPY_ATTACH)
+    if (applicationOption_ == STAT_SERIAL_ATTACH || applicationOption_ == STAT_SERIAL_GDB_ATTACH || applicationOption_ == STAT_SERIAL_PYSPY_ATTACH || applicationOption_ == STAT_SERIAL_PYSTACK_ATTACH)
     {
         applicationNodeMultiSetIter = applicationNodeMultiSet_.begin();
         for (i = 0; i < parentCount; i++)

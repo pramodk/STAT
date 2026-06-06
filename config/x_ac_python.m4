@@ -69,4 +69,22 @@ AC_DEFUN([X_AC_PYTHON], [
   )
   AM_CONDITIONAL([ENABLE_PYSPY], [test "x$enable_pyspy" = "xyes"])
   AC_PATH_PROG(pyspycmd,$withpyspy,[py-spy],/,/usr/local/bin:/usr/bin:/bin/usr/local/bin)
+
+  enable_pystack=no
+  AC_ARG_WITH(pystack,
+    [AS_HELP_STRING([--with-pystack=path],
+      [Use path for PyStack backend]
+    )],
+    [if test "x$withval" = "xno"; then
+      withpystack=pystack
+    else
+      withpystack="$withval"
+      enable_pystack=yes
+      BELIBS="-lpython$python_version $BELIBS"
+    fi
+    ],
+    [withpystack=pystack]
+  )
+  AM_CONDITIONAL([ENABLE_PYSTACK], [test "x$enable_pystack" = "xyes"])
+  AC_PATH_PROG(pystackcmd,$withpystack,[pystack],/,/usr/local/bin:/usr/bin:/bin/usr/local/bin)
 ])

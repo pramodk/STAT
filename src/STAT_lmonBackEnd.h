@@ -28,6 +28,7 @@ class STAT_lmonBackEnd : public STAT_BackEnd
     virtual StatError_t initGdb();
 #endif
     virtual StatError_t initPySpy();
+    virtual StatError_t initPyStack();
 
 };
 

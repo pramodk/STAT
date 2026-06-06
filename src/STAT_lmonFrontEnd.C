@@ -150,7 +150,34 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
             daemonArgv[daemonArgc - 1] = NULL;
         }
 
-    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH)
+        if (applicationOption_ == STAT_PYSTACK_ATTACH || applicationOption_ == STAT_SERIAL_PYSTACK_ATTACH)
+        {
+            // On PPC64LE systems the FE environment is not passed to the daemons.
+            // We need to send PYTHONPATH for the PyStack BE component.
+            // We also need to send the PyStack path since this variable isn't propagated either.
+            const char *pyStackCommand, *pythonPath;
+            pythonPath = getenv("PYTHONPATH");
+            if (pythonPath == NULL)
+                pythonPath = ":";
+            pyStackCommand = getenv("STAT_PYSTACK");
+            if (pyStackCommand == NULL)
+                pyStackCommand = "pystack";
+            printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "Using STAT PyStack attach %s and PYTHONPATH %s\n", pyStackCommand, pythonPath);
+            daemonArgc += 4;
+            daemonArgv = (char **)realloc(daemonArgv, daemonArgc * sizeof(char *));
+            if (daemonArgv == NULL)
+            {
+                printMsg(STAT_ALLOCATE_ERROR, __FILE__, __LINE__, "%s malloc failed to allocate for daemon argv\n", strerror(errno));
+                return STAT_ALLOCATE_ERROR;
+            }
+            daemonArgv[daemonArgc - 5] = strdup("-P");
+            daemonArgv[daemonArgc - 4] = strdup(pythonPath);
+            daemonArgv[daemonArgc - 3] = strdup("-K");
+            daemonArgv[daemonArgc - 2] = strdup(pyStackCommand);
+            daemonArgv[daemonArgc - 1] = NULL;
+        }
+
+    if (applicationOption_ != STAT_SERIAL_ATTACH && applicationOption_ != STAT_SERIAL_GDB_ATTACH && applicationOption_ != STAT_SERIAL_PYSPY_ATTACH && applicationOption_ != STAT_SERIAL_PYSTACK_ATTACH)
     {
         if (iIsFirstRun == true)
         {
@@ -194,7 +221,7 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
         else
             gsLmonState = gsLmonState | 0x00000002;
 
-        if (applicationOption_ == STAT_PYSPY_ATTACH)
+        if (applicationOption_ == STAT_PYSPY_ATTACH || applicationOption_ == STAT_PYSTACK_ATTACH)
             daemonArgc += 1;
         if (toolDaemonExe_ == NULL)
         {
@@ -210,6 +237,8 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
         }
         if (applicationOption_ == STAT_PYSPY_ATTACH)
             daemonArgv[daemonArgc - 4] = strdup("-Y");
+        else if (applicationOption_ == STAT_PYSTACK_ATTACH)
+            daemonArgv[daemonArgc - 4] = strdup("-K");
         daemonArgv[daemonArgc - 3] = strdup("-d");
         snprintf(tempString, BUFSIZE, "%d", nDaemonsPerNode_);
         daemonArgv[daemonArgc - 2] = strdup(tempString);
@@ -224,7 +253,7 @@ StatError_t STAT_lmonFrontEnd::launchDaemons()
         for (i = 0; i < daemonArgc; i++)
             printMsg(STAT_LOG_MESSAGE, __FILE__, __LINE__, "daemonArgv[%d] = %s\n", i, daemonArgv[i]);
 
-        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_PYSPY_ATTACH)
+        if (applicationOption_ == STAT_ATTACH || applicationOption_ == STAT_GDB_ATTACH || applicationOption_ == STAT_PYSPY_ATTACH || applicationOption_ == STAT_PYSTACK_ATTACH)
         {
             if (launcherPid_ == 0)
             {

@@ -31,6 +31,9 @@ fi
 if test -z "$STAT_PYSPY" ; then
     export STAT_PYSPY=@pyspycmd@
 fi
+if test -z "$STAT_PYSTACK" ; then
+    export STAT_PYSTACK=@pystackcmd@
+fi
 if test -z "$STAT_FGFS_FILTER_PATH" ; then
     if test -n "$FGFS_PREFIX" ; then
         export STAT_FGFS_FILTER_PATH=$FGFS_PREFIX/lib/libfgfs_filter.so
