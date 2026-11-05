@@ -39,8 +39,29 @@ jobs:
             --progress=plain --build-arg JOBS=4 \
             -t "stat-ci:${{ matrix.arch }}" -f ci-image/Dockerfile .
           docker image inspect "stat-ci:${{ matrix.arch }}" --format 'Image size: {{.Size}} bytes'
-      - name: Build and validate checked-out STAT
+      - name: Build, validate, and sample checked-out STAT
         run: |
-          /usr/bin/time -p docker run --rm --platform "${{ matrix.platform }}" \
-            -v "$PWD:/workspace:ro" "stat-ci:${{ matrix.arch }}" \
-            bash -c 'bash /opt/stat-ci/build-stat.sh /workspace /tmp/stat-under-test && bash /opt/stat-ci/validate.sh /tmp/stat-under-test'
+          /usr/bin/time -p docker run --rm -i --platform "${{ matrix.platform }}" \
+            --cap-add SYS_PTRACE --security-opt seccomp=unconfined --shm-size=256m \
+            -v "$PWD:/workspace:ro" "stat-ci:${{ matrix.arch }}" bash -s <<'STAT_SMOKE'
+          set -euo pipefail
+          source /opt/stat-ci/stat-env.sh
+          bash /opt/stat-ci/build-stat.sh /workspace /tmp/stat-under-test
+          bash /opt/stat-ci/validate.sh /tmp/stat-under-test
+          work_dir="$(mktemp -d /tmp/stat-functional.XXXXXX)"
+          app_pid=""
+          cleanup() {
+            if [[ -n "$app_pid" ]]; then kill "$app_pid" 2>/dev/null || true; fi
+            rm -rf "$work_dir"
+          }
+          trap cleanup EXIT
+          cd "$work_dir"
+          cc -g -O0 -fno-omit-frame-pointer /workspace/examples/src/serial.c -o serial
+          ./serial &
+          app_pid=$!
+          sleep 1
+          timeout 60 /tmp/stat-under-test/bin/stat-cl -i -S -t 2 -T 100 -I "$app_pid"
+          test -n "$(find stat_results -name '*.dot' -print -quit)"
+          grep -R -q 'myfun' stat_results --include='*.dot'
+          grep -R -q 'mysleep' stat_results --include='*.dot'
+          STAT_SMOKE
