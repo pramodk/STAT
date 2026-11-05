@@ -1,8 +1,12 @@
 name: Fork CI smoke test
 
 on:
-  pull_request:
-    branches: [develop]
+  push:
+    branches: [ci-fork-workflow-test]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
