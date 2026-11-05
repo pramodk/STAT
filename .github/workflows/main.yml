@@ -1,4 +1,4 @@
-name: Fork CI smoke test
+name: Fork CI image build
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  smoke:
+  build:
     if: github.repository == 'pramodk/STAT'
     strategy:
       matrix:
@@ -24,11 +24,23 @@ jobs:
             arch: aarch64
             platform: linux/arm64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 10
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - name: Check architecture and Docker
         run: |
           test "$(uname -m)" = "${{ matrix.arch }}"
+          df -h /
           docker version
           test "$(docker run --rm --platform "${{ matrix.platform }}" ubuntu:24.04 uname -m)" = "${{ matrix.arch }}"
+      - name: Build Pixi and STAT image
+        run: |
+          /usr/bin/time -p docker build --platform "${{ matrix.platform }}" \
+            --progress=plain --build-arg JOBS=4 \
+            -t "stat-ci:${{ matrix.arch }}" -f ci-image/Dockerfile .
+          docker image inspect "stat-ci:${{ matrix.arch }}" --format 'Image size: {{.Size}} bytes'
+      - name: Build and validate checked-out STAT
+        run: |
+          /usr/bin/time -p docker run --rm --platform "${{ matrix.platform }}" \
+            -v "$PWD:/workspace:ro" "stat-ci:${{ matrix.arch }}" \
+            bash -c 'bash /opt/stat-ci/build-stat.sh /workspace /tmp/stat-under-test && bash /opt/stat-ci/validate.sh /tmp/stat-under-test'
