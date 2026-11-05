@@ -1,58 +1,119 @@
-name: A workflow for CI testing of a STAT commit
-#author: Gregory L. Lee <lee218@llnl.gov>
-#description: build STAT's dependences (or uses cached builds), builds STAT, and then runs STAT on a simple serial application.
-on: push
+name: Fork MPI and Enroot smoke
+
+on:
+  push:
+    branches: [ci-mpi-enroot-smoke]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  build:
-    name: Hello world action
-    runs-on: ubuntu-20.04
+  smoke:
+    if: github.repository == 'pramodk/STAT'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+            platform: linux/amd64
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v2
-      - name: Cache Dependences
-        id: cacher
-        uses: actions/cache@v2
-        with:
-            path: /home/runner/local
-            #key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-            key: ${{ runner.os }}
-      - uses: ./action-a
-        with:
-          MY_NAME: "Greg"
-      - name: test cache
-        if: steps.cacher.outputs.cache-hit == 'true'
-        run: ls -l $HOME/local/lib
-      - name: Build dependences
+      - uses: actions/checkout@v4
+      - name: Build minimal Ubuntu MPI and Enroot image
         run: |
-            sudo apt-get update
-            sudo apt-get install graphviz
-            sudo apt-get install libboost-all-dev
-            sudo apt-get install elfutils
-            sudo apt-get install libelf-dev
-            sudo apt-get install libgcrypt-dev
-            sudo apt-get install build-essential
-            sudo apt-get install texlive
-            sudo apt-get install binutils-dev
-            sudo apt-get install libiberty-dev
-            sudo apt-get install mpich
-            sudo apt-get install slurm
-            sudo apt-get install pkg-config
-            sudo apt-get install python python-dev
-      - shell: bash
-        if: steps.cacher.outputs.cache-hit != 'true'
-        run: ./.github/scripts/builddeps.sh
-      - shell: bash
+          set -euo pipefail
+          /usr/bin/time -p docker build --platform "${{ matrix.platform }}" \
+            -t "mpi-enroot-smoke:${{ matrix.arch }}" - <<'DOCKERFILE'
+          # syntax=docker/dockerfile:1.7
+          FROM ubuntu:24.04 AS inner
+
+          FROM ubuntu:24.04
+          ARG TARGETARCH
+          ENV DEBIAN_FRONTEND=noninteractive
+          RUN apt-get update && apt-get install -y --no-install-recommends \
+                ca-certificates curl gcc openmpi-bin libopenmpi-dev \
+                jq squashfs-tools parallel libcap2-bin \
+              && case "$TARGETARCH" in \
+                   amd64) sha=5955c51e88df0c5ed538d87abb5264609d4bad55fa8570745ed5d4ec66c8ab91 ;; \
+                   arm64) sha=267018b335815a6b32a562915de1f3fad579f7c9d6748e98c62e7369b40be421 ;; \
+                   *) exit 2 ;; \
+                 esac \
+              && curl -fsSL \
+                   "https://github.com/NVIDIA/enroot/releases/download/v4.2.1/enroot_4.2.1-1_$TARGETARCH.deb" \
+                   -o /tmp/enroot.deb \
+              && printf '%s  %s\n' "$sha" /tmp/enroot.deb | sha256sum -c - \
+              && apt-get install -y --no-install-recommends /tmp/enroot.deb \
+              && rm -f /tmp/enroot.deb \
+              && rm -rf /var/lib/apt/lists/*
+          COPY --from=inner / /opt/ubuntu-rootfs
+          RUN mksquashfs /opt/ubuntu-rootfs /opt/ubuntu.sqsh \
+                -comp zstd -b 1M -processors 2 -noappend -exit-on-error \
+              && rm -rf /opt/ubuntu-rootfs \
+              && enroot version
+          DOCKERFILE
+      - name: Run serial, four-rank MPI, and MPI-to-Enroot hello tests
         run: |
-          set -x
-          ls -l ./
-          ./bootstrap
-          ./configure --prefix=$HOME/install --with-graphlib=$HOME/local --with-stackwalker=$HOME/local --with-mrnet=$HOME/local --with-launchmon=$HOME/local --disable-examples || cat config.log
-          make -j
-          make install
-          export LD_LIBRARY_PATH=$HOME/local/lib
-          $HOME/install/bin/stat-cl --help
-          echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope || echo failed
-          gcc -g examples/src/serial.c -o a.out
-          ./a.out &
-          $HOME/install/bin/stat-cl -I $!
-          cat stat_results/output.0000/00_output.0000.2D.dot
-          cat stat_results/output.0000/*.dot
+          set -euo pipefail
+          docker run --rm -i --platform "${{ matrix.platform }}" \
+            --user 1000:1000 \
+            --security-opt seccomp=unconfined \
+            --security-opt apparmor=unconfined \
+            -e HOME=/tmp \
+            -e ENROOT_DATA_PATH=/tmp/enroot/data \
+            -e ENROOT_CACHE_PATH=/tmp/enroot/cache \
+            -e ENROOT_RUNTIME_PATH=/tmp/enroot/run \
+            "mpi-enroot-smoke:${{ matrix.arch }}" bash -s <<'SMOKE'
+          set -euo pipefail
+          work_dir="$(mktemp -d)"
+          trap 'rm -rf "$work_dir"' EXIT
+          cd "$work_dir"
+
+          cat >serial.c <<'SERIAL_C'
+          #include <stdio.h>
+          int main(void) { puts("SERIAL_HELLO"); return 0; }
+          SERIAL_C
+          gcc serial.c -o serial
+          test "$(./serial)" = SERIAL_HELLO
+          echo SERIAL_HELLO
+
+          cat >mpi.c <<'MPI_C'
+          #include <mpi.h>
+          #include <stdio.h>
+          int main(int argc, char **argv) {
+              int rank, size;
+              if (MPI_Init(&argc, &argv) != MPI_SUCCESS) return 1;
+              MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+              MPI_Comm_size(MPI_COMM_WORLD, &size);
+              printf("MPI_HELLO rank=%d size=%d\n", rank, size);
+              MPI_Finalize();
+              return 0;
+          }
+          MPI_C
+          mpicc mpi.c -o mpi
+          mpirun --oversubscribe -n 4 ./mpi </dev/null | sort >mpi.out
+          printf '%s\n' \
+            'MPI_HELLO rank=0 size=4' 'MPI_HELLO rank=1 size=4' \
+            'MPI_HELLO rank=2 size=4' 'MPI_HELLO rank=3 size=4' \
+            | diff -u - mpi.out
+          cat mpi.out
+
+          enroot create -n ubuntu /opt/ubuntu.sqsh
+          mpirun --oversubscribe -n 4 \
+            enroot start -e OMPI_COMM_WORLD_RANK -e OMPI_COMM_WORLD_SIZE ubuntu \
+            /bin/sh -c 'printf "ENROOT_HELLO rank=%s size=%s\n" "$OMPI_COMM_WORLD_RANK" "$OMPI_COMM_WORLD_SIZE"' </dev/null \
+            | sort >enroot.out
+          printf '%s\n' \
+            'ENROOT_HELLO rank=0 size=4' 'ENROOT_HELLO rank=1 size=4' \
+            'ENROOT_HELLO rank=2 size=4' 'ENROOT_HELLO rank=3 size=4' \
+            | diff -u - enroot.out
+          cat enroot.out
+          SMOKE
