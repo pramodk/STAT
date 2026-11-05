@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+export STAT_PIXI=/opt/stat-pixi
+export STAT_DEPS=/opt/stat-deps
+export PIXI_PREFIX="$STAT_PIXI/.pixi/envs/default"
+export PATH="$STAT_DEPS/bin:$PIXI_PREFIX/bin:/opt/pixi/bin:$PATH"
+export LD_LIBRARY_PATH="$STAT_DEPS/lib:$PIXI_PREFIX/lib:${LD_LIBRARY_PATH:-}"
+export PKG_CONFIG_PATH="$STAT_DEPS/lib/pkgconfig:$PIXI_PREFIX/lib/pkgconfig:$PIXI_PREFIX/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+export PYTHONPATH="$STAT_DEPS/lib/python3.11/site-packages:$PIXI_PREFIX/lib/python3.11/site-packages:${PYTHONPATH:-}"
+export CC="$PIXI_PREFIX/bin/cc"
+export CXX="$PIXI_PREFIX/bin/c++"
