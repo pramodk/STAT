@@ -60,6 +60,16 @@ jobs:
               && rm -rf /opt/ubuntu-rootfs \
               && enroot version
           DOCKERFILE
+      - name: Enable user namespaces for nested Enroot
+        run: |
+          set -euo pipefail
+          sysctl user.max_user_namespaces user.max_mnt_namespaces
+          if [ -e /proc/sys/kernel/unprivileged_userns_clone ]; then
+            sudo sysctl -w kernel.unprivileged_userns_clone=1
+          fi
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
       - name: Run serial, four-rank MPI, and MPI-to-Enroot hello tests
         run: |
           set -euo pipefail
