@@ -60,9 +60,14 @@ jobs:
               && rm -rf /opt/ubuntu-rootfs \
               && enroot version
           DOCKERFILE
-      - name: Enable user namespaces for nested Enroot
+      - name: Enable ptrace and Enroot user namespaces
         run: |
           set -euo pipefail
+          # Allow Dyninst to attach to sibling processes on this disposable runner.
+          sudo sysctl -w kernel.yama.ptrace_scope=0
+          test "$(sysctl -n kernel.yama.ptrace_scope)" = 0
+
+          # Allow nested Enroot containers on this disposable runner.
           sysctl user.max_user_namespaces user.max_mnt_namespaces
           if [ -e /proc/sys/kernel/unprivileged_userns_clone ]; then
             sudo sysctl -w kernel.unprivileged_userns_clone=1
@@ -83,6 +88,7 @@ jobs:
             -e ENROOT_RUNTIME_PATH=/tmp/enroot/run \
             "mpi-enroot-smoke:${{ matrix.arch }}" bash -s <<'SMOKE'
           set -euo pipefail
+          test "$(cat /proc/sys/kernel/yama/ptrace_scope)" = 0
           work_dir="$(mktemp -d)"
           trap 'rm -rf "$work_dir"' EXIT
           cd "$work_dir"
