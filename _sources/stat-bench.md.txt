@@ -1,0 +1,16 @@
+# Using the stat-bench Emulator
+
+## Description
+
+```{include} ../src/statbench_description.sgml
+```
+
+## stat-bench Options
+
+```{include} ../src/statbench_options.sgml
+```
+
+## stat-bench Usage Example
+
+```{include} ../src/statbench_example.sgml
+```

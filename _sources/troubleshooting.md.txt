@@ -1,0 +1,6 @@
+# Troubleshooting Guide
+
+## Troubleshooting
+
+```{include} ../src/stat_troubleshoot.sgml
+```

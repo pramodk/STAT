@@ -1,0 +1,4 @@
+# Changelog
+
+```{include} ../src/stat_changelog.sgml
+```

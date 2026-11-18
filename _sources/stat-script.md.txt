@@ -1,0 +1,6 @@
+# Using the stat-script Python Interface
+
+## Description
+
+```{include} ../src/stat_script_description.sgml
+```

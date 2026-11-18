@@ -1,0 +1,16 @@
+# Using the stat-cl Command
+
+## Description
+
+```{include} ../src/stat_description.sgml
+```
+
+## stat-cl Options
+
+```{include} ../src/stat_options.sgml
+```
+
+## STAT Usage Example
+
+```{include} ../src/stat_example.sgml
+```

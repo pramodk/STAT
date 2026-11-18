@@ -1,0 +1,16 @@
+# Tips and Tricks Using STAT
+
+## Running STAT at scale
+
+```{include} ../src/stat_at_scale.sgml
+```
+
+## Using STAT with IO Watchdog and SLURM
+
+```{include} ../src/io_watchdog.sgml
+```
+
+## Running STAT in a Batch Script
+
+```{include} ../src/stat_batch_script.sgml
+```

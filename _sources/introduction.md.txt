@@ -1,0 +1,4 @@
+# Introduction
+
+```{include} ../src/stat_introduction.sgml
+```

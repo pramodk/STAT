@@ -1,0 +1,16 @@
+# Setting STAT Preferences and Options
+
+## Preference Files
+
+```{include} ../src/stat_preference_files.sgml
+```
+
+## Loading and Saving Preferences
+
+```{include} ../src/stat_preferences.sgml
+```
+
+## Environment Variables
+
+```{include} ../src/stat_environment_variables.sgml
+```

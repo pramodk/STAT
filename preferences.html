@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Setting STAT Preferences and Options &#8212; STAT User Guide</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/guide.css?v=7ac5e29e" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Prescription-Based Debugging With Prototype DySectAPI" href="dysectapi.html" />
+    <link rel="prev" title="Using the stat-gui GUI" href="stat-gui.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="setting-stat-preferences-and-options">
+<h1>Setting STAT Preferences and Options<a class="headerlink" href="#setting-stat-preferences-and-options" title="Link to this heading">¶</a></h1>
+<section id="preference-files">
+<h2>Preference Files<a class="headerlink" href="#preference-files" title="Link to this heading">¶</a></h2>
+<p>Several files can influence how STAT runs. The first such file is $prefix/etc/STAT/nodes.txt, which specifies a list of hostnames, one hostname per line, on which to launch MRNet communication processes. This file is designed to be shared by all users and should point to shared resources that all users have remote shell access to, such as login nodes. Note that by default STAT will not test access to a node before trying to launch communication processes. If the STAT_CHECK_NODE_ACCESS environment variable is set to any value, then STAT will try to run (via remote shell) a simple test to see if the node is accessible before adding it to the MRNet tree. Also note that nodes.txt will not be used if the -A or &quot;Share App Nodes&quot; option is enabled.</p>
+<p>STAT GUI preferences can be set with an installation specific STAT.conf or user specific .STATrc file. The installation specific file should be placed in $prefix/etc/STAT/STAT.conf, while the user specific file should be placed in $HOME/.STATrc. Options specified in the user's .STATrc file will always take precedence over the STAT installation's .STATrc file. Each preference file specifies one option per line of the format:</p>
+<p>Option = Value</p>
+<p>Here is a list of options:</p>
+<dl class="simple myst">
+<dt>Remote Host = <em>hostname</em></dt><dd><p>Sets the default remote host to <em>hostname</em> to search for the job launcher process.</p>
+</dd>
+<dt>Remote Host Shell = <em>rsh|ssh</em></dt><dd><p>Sets the default remote host shell to <em>rsh</em> or <em>ssh</em> to get a process listing on remote hosts.</p>
+</dd>
+<dt>Resource Manager = <em>Auto|Alps|Slurm</em></dt><dd><p>Sets the default resource manager to <em>Alps</em> or <em>Slurm</em> for searching for the job launcher process, or use <em>Auto</em> to determine the resourece manager automatically.</p>
+</dd>
+<dt>Job Launcher = <em>regex</em></dt><dd><p>Sets the default regular expression to <em>regex</em> (i.e., &quot;mpirun|srun&quot;) for filtering the process listing for the job launcher process.</p>
+</dd>
+<dt>Tool Daemon Path = <em>path</em></dt><dd><p>Use the STAT deamon executable installed in <em>path</em> instead of the default.</p>
+</dd>
+<dt>Filter Path = <em>path</em></dt><dd><p>Use the STAT filter shared object installed in <em>path</em> instead of the default.</p>
+</dd>
+<dt>Topology Type = <em>automatic|depth|max fanout|custom</em></dt><dd><p>Use the specified topology type when building the MRNet communication tree. The <em>automatic</em> topology is typically recommended and set by default.</p>
+</dd>
+<dt>Topology = <em>topology</em></dt><dd><p>Use <em>topology</em> for the specific topology configuration. This should be used with the Topology Type option. Refer to the stat-cl options to see valid Topology specifications for a given Topology Type.</p>
+</dd>
+<dt>Communication Nodes = <em>nodelist</em></dt><dd><p>Use the nodes listed in <em>nodelist</em> for MRNet communication processes.</p>
+</dd>
+<dt>Check Node Access = <em>true|false</em></dt><dd><p>Controls whether to check access to a node before trying to launch MRNet communication processes on it.</p>
+</dd>
+<dt>CP policy = <em>none|share app nodes|exclusive</em></dt><dd><p>Controls where to launch communication processes. When set to <em>share app nodes</em>, they will be launched on nodes running application processes. On BlueGene systems, this will actually place them on the I/O nodes, and requires users to be able to access the I/O nodes via a remote shell. When set to <em>exclusive</em>, then the communication processes will only be run on specified nodes that do not run other STAT tool processes (e.g., the STAT frontend and the back-end daemons).</p>
+</dd>
+<dt>Communication Processes per Node = <em>count</em></dt><dd><p>Launch no more than <em>count</em> MRNet communication processes per node.</p>
+</dd>
+<dt>Num Traces = <em>count</em></dt><dd><p>Gather <em>count</em> stack traces when sampling multiple.</p>
+</dd>
+<dt>Trace Frequency (ms) = <em>count</em></dt><dd><p>Let the process run <em>count</em> milliseconds between multiple samples.</p>
+</dd>
+<dt>Num Retries = <em>count</em></dt><dd><p>Attempt <em>count</em> retries to try to obtain a complete stack trace.</p>
+</dd>
+<dt>Retry Frequency (ms) = <em>count</em></dt><dd><p>Let the process run <em>count</em> milliseconds between stack sample retries.</p>
+</dd>
+<dt>With Threads = <em>true|false</em></dt><dd><p>Controls whether to gather stack traces from threads.</p>
+</dd>
+<dt>With OpenMP = <em>true|false</em></dt><dd><p>Controls whether to translate OpenMP stack traces to logical application view.</p>
+</dd>
+<dt>Gather Python Traces = <em>true|false</em></dt><dd><p>Controls whether to gather Python script level stack traces, rather than show the Python interpreter stack traces.</p>
+</dd>
+<dt>Sample Type = <em>function only|module offset|function and pc|function and line</em></dt><dd><p>Controls the granularity of the nodes in the gathered stack traces.</p>
+</dd>
+<dt>Edge Type = <em>full list|count and representative</em></dt><dd><p>Controls the granularity of the edges in the gathered stack traces.</p>
+</dd>
+<dt>DDT Path = <em>path</em></dt><dd><p>Use the DDT executable installed in <em>path</em> for subset debugging.</p>
+</dd>
+<dt>DDT LaunchMON Prefix = <em>path</em></dt><dd><p>Use the LaunchMON installation in <em>path</em> for improved DDT subset attaching, otherwise attach via hostname:PID pairs.</p>
+</dd>
+<dt>TotalView Path = <em>path</em></dt><dd><p>Use the TotalView executable installed in <em>path</em> for subset debugging.</p>
+</dd>
+<dt>Additional Debugger Args = <em>args</em></dt><dd><p>Add <em>args</em> to the argument list when launching TotalView or DDT.</p>
+</dd>
+<dt>Log Dir = <em>directory</em></dt><dd><p>Write STAT debug logs to <em>directory</em>.</p>
+</dd>
+<dt>Log Frontend = <em>true|false</em></dt><dd><p>Controls whether to enable debug logging of the STAT frontend.</p>
+</dd>
+<dt>Log Backend = <em>true|false</em></dt><dd><p>Controls whether to enable debug logging of the STAT backend.</p>
+</dd>
+<dt>Log CP = <em>true|false</em></dt><dd><p>Controls whether to enable debug logging of the STAT communication processes.</p>
+</dd>
+<dt>Log SW = <em>true|false</em></dt><dd><p>Controls whether to enable debug logging of Stackwalker by the STAT backend.</p>
+</dd>
+<dt>Log SWERR = <em>true|false</em></dt><dd><p>Controls whether to enable debug logging of Stackwalker by the STAT backend when a Stackwalker error is detected.</p>
+</dd>
+<dt>Use MRNet Printf = <em>true|false</em></dt><dd><p>Controls whether to use MRNet's printf when writing debug logs. This is helpful to correlate timing between STAT log messages and MRNet debug log messages, when MRNet logging is being logged (via the STAT_MRNET_OUTPUT_LEVEL enviornment variable).</p>
+</dd>
+<dt>GDB BE = <em>true|false</em></dt><dd><p>Controls whether to use (cuda-)gdb to drive the deamons.</p>
+</dd>
+<dt>With CUDA QUICK = <em>true|false</em></dt><dd><p>When using cuda-gdb as the BE, controls whether to gather less comprehensive, but faster cuda traces. Cuda frames will only show the top of the stack, not the full call path. This also defaults to display filename and line number and will not resolve the function name.</p>
+</dd>
+<dt>GDB Path = <em>path</em></dt><dd><p>Use the gdb executable installed in <em>path</em> for debugging when GDB BE is set to true.</p>
+</dd>
+</dl>
+</section>
+<section id="loading-and-saving-preferences">
+<h2>Loading and Saving Preferences<a class="headerlink" href="#loading-and-saving-preferences" title="Link to this heading">¶</a></h2>
+<p>Options from a STAT session can be saved to a preferences file that can be loaded on subsequent sessions. This can be accessed through the <strong>File</strong> -&gt; <strong>Load Preferences</strong> and <strong>File</strong> -&gt; <strong>Save Preferences</strong> menu items.</p>
+</section>
+<section id="environment-variables">
+<h2>Environment Variables<a class="headerlink" href="#environment-variables" title="Link to this heading">¶</a></h2>
+<p>Several environment variables influence STAT and its dependent packages. Note that dependent package environment variables are prefixed with &quot;STAT_&quot; to avoid conflict with other tools using that package. The STAT process will then set the appropriate (i.e., without &quot;STAT_&quot;) environment variable to pass the value to the dependent package.</p>
+<dl class="simple myst">
+<dt>STAT_PREFIX=<em>directory</em></dt><dd><p>Use <em>directory</em> as the installation prefix instead of the compile-time STAT_PREFIX macro when looking for STAT components and configuration files.</p>
+</dd>
+<dt>STAT_CONNECTION_TIMEOUT=<em>time</em></dt><dd><p>Wait <em>time</em> seconds for daemons to connect to MRNet. Upon timeout, run with the available subset.</p>
+</dd>
+<dt>STAT_DAEMON_PATH=<em>path</em></dt><dd><p>Use the STAT daemon executable <em>path</em> instead of the default. <em>path</em> must be set to the full path of the STATD executable.</p>
+</dd>
+<dt>STAT_FILTER_PATH=<em>path</em></dt><dd><p>Use the STAT filter shared object <em>path</em> instead of the default. <em>path</em> must be set to the full path of the STAT_FilterDefinitions.so shared object file.</p>
+</dd>
+<dt>STAT_FGFS_FILTER_PATH=<em>path</em></dt><dd><p>Use the STAT FGFS filter shared object <em>path</em> instead of the default. <em>path</em> must be set to the full path of the STAT_FilterDefinitions.so shared object file.</p>
+</dd>
+<dt>STAT_MRNET_OUTPUT_LEVEL=<em>level</em></dt><dd><p>Enable MRNet debug logging at <em>level</em> (0-5).</p>
+</dd>
+<dt>STAT_MRNET_PORT_BASE=<em>port</em></dt><dd><p>Set the MRNet base port number to <em>port</em>.</p>
+</dd>
+<dt>STAT_MRNET_STARTUP_TIMEOUT=<em>seconds</em></dt><dd><p>Set the MRNet connection timeout to <em>seconds</em>.</p>
+</dd>
+<dt>STAT_CONNECT_TIMEOUT=<em>seconds</em></dt><dd><p>Set the STAT connection timeout to <em>seconds</em>, after which STAT will try to continue with any subset of daemons that have connected.</p>
+</dd>
+<dt>STAT_MRNET_DEBUG_LOG_DIRECTORY=<em>directory</em></dt><dd><p>Write MRNet debug log files to <em>directory</em>.</p>
+</dd>
+<dt>STAT_OUTPUT_REDIRECT_DIR=<em>directory</em></dt><dd><p>Redirect stdout and stderr to a set of hostname specific files in <em>directory</em>.</p>
+</dd>
+<dt>STAT_MRN_COMM_PATH=<em>path</em></dt><dd><p>Use the mrnet_commnode executable <em>path</em>. <em>path</em> must be set to the full path of the mrnet_commnode executable. (Deprecated along with MRNet's MRN_COMM_PATH)</p>
+</dd>
+<dt>STAT_MRNET_COMM_PATH=<em>path</em></dt><dd><p>Use the mrnet_commnode executable <em>path</em>. <em>path</em> must be set to the full path of the mrnet_commnode executable.</p>
+</dd>
+<dt>STAT_XPLAT_RSH=<em>path</em></dt><dd><p>Use the remote shell <em>path</em> for launching mrnet_commnode processes.</p>
+</dd>
+<dt>STAT_PROCS_PER_NODE=<em>count</em></dt><dd><p>Allow up to <em>count</em> communication processes to be launched per node.</p>
+</dd>
+<dt>STAT_FE_HOSTNAME=<em>value</em></dt><dd><p>Set the STAT Front End hostname to <em>value</em>. This may be necessary for example on BlueGene systems to use the proper network interface for the I/O nodes to connect back to.</p>
+</dd>
+<dt>STAT_CHECK_NODE_ACCESS=<em>value</em></dt><dd><p>Set to any value to have STAT check user access to any specified nodes before launching communication processes.</p>
+</dd>
+<dt>STAT_GROUP_OPS=<em>value</em></dt><dd><p>Set to any value to enable Stackwalker's group operations. Group operations may help with performance when a single daemon needs to manage a large number of target processes. This is on by default on BG/Q systems.</p>
+</dd>
+<dt>STAT_LMON_PREFIX=<em>path</em></dt><dd><p>Sets the LaunchMON installation prefix to <em>path</em>.</p>
+</dd>
+<dt>STAT_LMON_LAUNCHMON_ENGINE_PATH=<em>path</em></dt><dd><p>Use the launchmon executable <em>path</em>. <em>path</em> must be set to the full path of the launchmon executable.</p>
+</dd>
+<dt>STAT_LMON_REMOTE_LOGIN=<em>command</em></dt><dd><p>Use the remote shell <em>command</em> for LaunchMON remote debugging.</p>
+</dd>
+<dt>STAT_LMON_DEBUG_BES=<em>value</em></dt><dd><p>Launch the backends under a debugger's control if <em>value</em> is set (must be enabled in LaunchMON configuration).</p>
+</dd>
+<dt>STAT_USAGE_LOG=<em>path</em></dt><dd><p>Record usage of STAT in the file located in <em>path</em>. <em>path</em> must be writeable by user.</p>
+</dd>
+<dt>STAT_ADDR2LINE=<em>path</em></dt><dd><p>Use the addr2line utility located in <em>path</em> to translate module and offset prefix trees in the stat-view GUI.</p>
+</dd>
+<dt>STAT_GDB=<em>path</em></dt><dd><p>Use the gdb located in <em>path</em> to drive the daemons.</p>
+</dd>
+<dt>STAT_INTELGT_MAX_THREADS=<em>number</em></dt><dd><p>Set to a positive integer to limit the number of threads used for call-stack capture. STAT will capture stack traces from only the first N threads. For example, <code class="docutils literal notranslate"><span class="pre">STAT_INTELGT_MAX_THREADS=100</span></code> will capture the first 100 threads. If the value is not a positive integer, this setting is ignored and all threads are captured.</p>
+</dd>
+<dt>STAT_INTELGT_EXPR_FILTER=<em>expression</em></dt><dd><p>Set to a GDB expression to selectively filter threads for call-stack capture. Only threads where the expression evaluates to true (non-zero) will have their stack traces captured. The new line characters and system commands keywords like <code class="docutils literal notranslate"><span class="pre">shell,</span> <span class="pre">call,</span> <span class="pre">python,</span> <span class="pre">source,</span> <span class="pre">dump,</span> <span class="pre">restore</span></code> are not allowed. The expression is evaluated in the context of each thread using GDB's thread apply command. For example, <code class="docutils literal notranslate"><span class="pre">STAT_INTELGT_EXPR_FILTER=&quot;\$_thread</span> <span class="pre">&lt;=</span> <span class="pre">50&quot;</span></code> will capture only threads with ID 50 or lower. The expression must be a valid GDB expression that returns a boolean value.</p>
+<p><strong>Security Note:</strong> This expression is directly evaluated by GDB. For security, the expression is validated to reject dangerous GDB commands such as <code class="docutils literal notranslate"><span class="pre">shell,</span> <span class="pre">call,</span> <span class="pre">python</span></code> and multi-line input. Only use this feature in trusted environments where environment variables are controlled.</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">STAT User Guide</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="disclaimer.html">Disclaimer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installing STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-cl.html">Using the stat-cl Command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-view.html">Using the stat-view GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-gui.html">Using the stat-gui GUI</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Setting STAT Preferences and Options</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#preference-files">Preference Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#loading-and-saving-preferences">Loading and Saving Preferences</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-variables">Environment Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dysectapi.html">Prescription-Based Debugging With Prototype DySectAPI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tips.html">Tips and Tricks Using STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-bench.html">Using the stat-bench Emulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-script.html">Using the stat-script Python Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="stat-gui.html" title="previous chapter">Using the stat-gui GUI</a></li>
+      <li>Next: <a href="dysectapi.html" title="next chapter">Prescription-Based Debugging With Prototype DySectAPI</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="guide-footer-layout">
+    <div class="guide-footer-content">
+      
+    <div class="footer">
+      &#169;2007-2020, Lawrence Livermore National Security, LLC.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.2.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/preferences.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+    </div>
+  </div>
+
+  </body>
+</html>

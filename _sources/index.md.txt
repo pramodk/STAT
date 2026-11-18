@@ -1,0 +1,29 @@
+# STAT: the Stack Trace Analysis Tool
+
+````{only} html
+```{image} ../src/figs/stat_logo.png
+:alt: STAT logo
+:width: 250px
+```
+
+````
+
+```{toctree}
+:maxdepth: 2
+
+disclaimer
+introduction
+overview
+changelog
+installation
+stat-cl
+stat-view
+stat-gui
+preferences
+dysectapi
+tips
+stat-bench
+stat-script
+troubleshooting
+bibliography
+```

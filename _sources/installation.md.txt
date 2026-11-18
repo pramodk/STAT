@@ -1,0 +1,11 @@
+# Installing STAT
+
+## Dependent Packages
+
+```{include} ../src/stat_dependencies.sgml
+```
+
+## Installation
+
+```{include} ../src/stat_installation.sgml
+```

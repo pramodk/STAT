@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Prescription-Based Debugging With Prototype DySectAPI &#8212; STAT User Guide</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="_static/guide.css?v=7ac5e29e" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tips and Tricks Using STAT" href="tips.html" />
+    <link rel="prev" title="Setting STAT Preferences and Options" href="preferences.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="prescription-based-debugging-with-prototype-dysectapi">
+<h1>Prescription-Based Debugging With Prototype DySectAPI<a class="headerlink" href="#prescription-based-debugging-with-prototype-dysectapi" title="Link to this heading">¶</a></h1>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
+<p>Debugging is a critical step in the development of any parallel program. However, the traditional interactive debugging model, where users manually step through code and inspect their application, does not scale well even for current supercomputers due its centralized nature. While lightweight debugging models, such as STAT, scale well, they can currently only debug a subset of bug classes. We therefore propose a new model, which we call prescriptive debugging, to fill this gap between these two approaches. This user-guided model allows programmers to express and test their debugging intuition in a way that helps to reduce the error space.</p>
+<p>We have implemented a prototype implementation embodying the prescriptive debugging model, the DySectAPI, allowing programmers to construct probe trees for automatic, event-driven debugging at scale. The DySectAPI implementation can run with a low overhead.</p>
+<p>The traditional debugging paradigm has survived because it provides the rudimentary operations that a user needs to effectively reduce the error search space. In a typical debug session, a user first sets a breakpoint at a particular code location. Once that breakpoint is triggered, the user will evaluate the state of the application and subsequently set another breakpoint, perhaps on a subset of processes that satisfy certain conditions. This process is then repeated until the bug is isolated.</p>
+<p>Our new prescriptive debugging model aims to capture the flexibility and generality of this interactive process, but allow users to codify individual steps and sequences in the form of debug probes that can then be executed without the need for individual interactions between debugger and user. Essentially, the prescriptive debugging model provides the means for a user to codify their debugging intuition into prescribed debug sessions. The application can then be submitted into the system's batch queue to be run under that debug session.</p>
+<p>At runtime, the debugger follows the user's intuition by executing the debug probes and, at the end, scalably gathers summary information that can be examined by the user during the execution or at their convenience after the job has completed. Our prescriptive parallel debugging model is built upon the notion of probes that can be linked together into a probe tree. A probe itself is composed of a <em>domain</em>, <em>events</em>, <em>conditions</em>, and <em>actions</em>as defined below.</p>
+<p>The <em>domain</em> is the set of processes to install a probe into. It also includes a synchronization operation that determines how long the probe should wait for processes in the domain before proceeding. More precisely, after the first process triggers a probe, the remaining processes have until some specified timeout to participate.</p>
+<p>We define an <em>event</em> as an occurrence of interest. Events borrowed from traditional debuggers include breakpoints, which specify a code location (when reached, the debugger will stop the target process) and data watchpoints, which monitor particular variables, memory locations or registers. An event can also be a user-defined timeout that instructs a probe to be triggered after some elapsed amount of time. Events can also capture asynchronous occurrences such as a program crash, a signal being raised or a system-level event such as memory exhaustion.</p>
+<p>These events allow programmers to express their debugging in terms of a set of procedures and in terms of code behaviors (e.g., on detecting a hang or slowness). Further, individual events can also be composed together to enable advanced fine-grained event selection. When an event occurs, its associated <em>condition</em> is evaluated. The condition is an expression that can be evaluated either locally on each backend or globally across the domain. A local condition may, for instance, check if a variable equals a particular value. A global condition can evaluate an aggregated value, such as minimum, maximum or average, across the entire domain. Conditions can also be composed to specify multiple variables of interest or to combine local and global evaluations.</p>
+<p>If the condition is satisfied, the probe is said to be <em>triggered</em>, and the specified <em>actions</em> are executed. Probe actions can be formulated by the user as an aggregation or a reduction, for example, aggregated messages, merged stack traces or the minimum and maximum of a variable. A probe can optionally include a set of child probes, which is enabled upon the satisfaction of the parent probe's condition. In this manner, a user can create a probe tree. A probe tree naturally matches the control-flow traversal that is typical of an interactive session with a traditional debugger. This can effectively narrow down the search space across the source-code dimension.</p>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
+<p>The DySectAPI comes included in STAT's source code. It can be built by turning on the <code class="docutils literal notranslate"><span class="pre">--enable-dysectapi</span></code> configure flag. DySectAPI requires DynInst library, which can be specified with the <code class="docutils literal notranslate"><span class="pre">--with-stackwalker=path</span></code> configure option.</p>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
+<p>A DySectAPI probe session is constructed as a C++ program. You will need to include the &quot;DysectAPI.h&quot; header file, which contains the specifications for the various DySectAPI objects and for the session routines. Your session must define a DysectStatus DysectAPI::onProcStart(int argc, char **argv) routine, which will create and link Probe objects. This section will only cover the high-level basics of constructing a debug session. For detailed information about the various constructs, you may refer to the header files or the reference guide.</p>
+<p>A Probe consists of an Event, Condition, Domain, and an Action or list of Actions. Various Probe signatures exist, so not all components are required. Probes can be linked into a tree with the Probe::link(Probe *) routine. Probe tree roots can be enabled via the Probe::setup() routine.</p>
+<p>An Event is an occurence of interest. DySectAPI defines several event types: Location; Timer; Async. Furthermore, Events can be combined with And, Or, and Not releations. A Location, essentially a debugger breakpoint, specifies where to install a probe. DySectAPI supports three location specifications: a function name; a source file and line number; or a program counter address. A Location can also be marked as pending, which informs DySectAPI that the probe should not be enabled until the parent probe has been triggered. A Timer specifies a timeout period to wait before triggering the Probe. An Async can be various asynchronous events, such as a signal, crash, or process exit.</p>
+<p>A Condition specifies the circumstances under which a probe is to be triggered. Most conditions evaluate a data expression, such as whether a specified variable equals a certain value or falls within a given range. Conditions can be combined with And, Or, and Not relations.</p>
+<p>The Domain specifies the set of processes within which to install a probe. The supported domains are World (i.e., all processes), a rank-specified Group, or Inherit (from the parent probe). A Domain can also specify a timeout, which indicates the amount of time to wait after the first process encounters the probe's event before proceeding.</p>
+<p>An Action indicates what to do once a probe has been triggered. The currently implemented Actions are: trace, null, totalview, depositCore, signal, loadLibrary, irpc, writeModuleVariable, stat, detach, detachAll, stackTrace, fullStackTrace, startTrace, stopTrace. The trace action prints out an aggregated trace message. The totalview action detaches DySectAPI from the target processes that triggered the probe and attaches the TotalView debugger to that set of processes. The depositCore action, which requires the libdepositcore library, causes the triggering processes to dump a core file. The signal action sends the specified integer signal to the triggered processes. The loadLibrary action loads the specified shared library into the triggered processes. The irpc action will invoke a function within the target processes. the writeModuleVariable action will modify the contents of a variable. The stat action will gather a Stack Trace Analysis Tool merged stack trace of the application. The detach action will detach DySectAPI from the triggered processes, while the detachAll action will detach DySectAPI from all application processes. The stackTrace and fullStackTrace actions will print an aggregated, text-based stack trace of the triggered processes. The startTrace and stopTrace actions indicate when to start and stop data tracing.</p>
+<p>An example DySectAPI session can be seen below:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>/* File: session.C */
+#include &lt;DysectAPI.h&gt;
+#include &lt;stdio.h&gt;
+
+/* Single entry for debug daemon */
+DysectStatus DysectAPI::onProcStart(int argc, char **argv) {
+
+  /* Probe creation */
+  Probe* entry  = new Probe(Code::location("entry(foo)"),
+                            Local::eval("argc &gt;= 5"),
+                            Domain::group("12,25,65-70", Wait::inf));
+
+  /* Within 500 ms and call frame has not been left */
+  Probe* timer  = new Probe(Event::And(Time::within(500),
+                            Event::Not(Async::leaveFrame())),
+                            Domain::group("..", 400),
+                            Action::trace("Took more than 500ms to return from 
+                                          foo()"));
+
+  /* Event chain */
+  entry-&gt;link(timer);
+
+  /* Setup probe tree */
+  entry-&gt;setup();
+
+  return DysectOK;
+}
+</pre></div>
+</div>
+<p>The session can be compiled with the <code class="docutils literal notranslate"><span class="pre">dysectc</span></code> command.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>% dysectc session.C    
+</pre></div>
+</div>
+<p>You will then need to run <code class="docutils literal notranslate"><span class="pre">stat-cl</span></code> and specify the generated session .so file with the <code class="docutils literal notranslate"><span class="pre">stat-cl</span></code> -X=path option, for example:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>% stat-cl -X $PWD/libsession.so -C srun mpi_application    
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">STAT User Guide</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="disclaimer.html">Disclaimer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installing STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-cl.html">Using the stat-cl Command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-view.html">Using the stat-view GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-gui.html">Using the stat-gui GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="preferences.html">Setting STAT Preferences and Options</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Prescription-Based Debugging With Prototype DySectAPI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#usage">Usage</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tips.html">Tips and Tricks Using STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-bench.html">Using the stat-bench Emulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat-script.html">Using the stat-script Python Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="troubleshooting.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="preferences.html" title="previous chapter">Setting STAT Preferences and Options</a></li>
+      <li>Next: <a href="tips.html" title="next chapter">Tips and Tricks Using STAT</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="guide-footer-layout">
+    <div class="guide-footer-content">
+      
+    <div class="footer">
+      &#169;2007-2020, Lawrence Livermore National Security, LLC.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.2.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/dysectapi.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+    </div>
+  </div>
+
+  </body>
+</html>

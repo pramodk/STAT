@@ -1,0 +1,36 @@
+# Using the stat-gui GUI
+
+## Description
+
+```{include} ../src/statgui_description.sgml
+```
+
+## stat-gui Options
+
+```{include} ../src/statgui_options.sgml
+```
+
+## The stat-gui GUI Toolbar
+
+```{include} ../src/statgui_toolbar.sgml
+```
+
+## Sample Options
+
+```{include} ../src/statgui_sample_options.sgml
+```
+
+## Process Table
+
+```{include} ../src/statgui_proc_tab.sgml
+```
+
+## Equivalence Classes and Subset Debugging
+
+```{include} ../src/statgui_eq_class.sgml
+```
+
+## Availability
+
+```{include} ../src/stat_llnl_availability.sgml
+```

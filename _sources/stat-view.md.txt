@@ -1,0 +1,16 @@
+# Using the stat-view GUI
+
+## Description
+
+```{include} ../src/statview_description.sgml
+```
+
+## The stat-view Node Menu
+
+```{include} ../src/statview_node_menu.sgml
+```
+
+## The stat-view Toolbar
+
+```{include} ../src/statview_toolbar.sgml
+```

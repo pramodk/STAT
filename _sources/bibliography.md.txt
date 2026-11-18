@@ -1,0 +1,4 @@
+# Bibliography
+
+```{include} ../src/stat_bibliography.sgml
+```

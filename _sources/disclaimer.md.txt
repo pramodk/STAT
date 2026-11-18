@@ -1,0 +1,11 @@
+# Disclaimer
+
+## Auspice
+
+```{include} ../src/stat_auspice.sgml
+```
+
+## License
+
+```{include} ../src/stat_license.sgml
+```
