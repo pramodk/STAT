@@ -119,3 +119,7 @@ hostnamefn.*
 /tests/ci-image/pixi.lock
 
 /tests/integration/results/
+
+# Local documentation builds
+doc/venv/
+doc/_build/
