@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Overview &#8212; STAT User Guide</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=c4d99976" />
+    <link rel="stylesheet" type="text/css" href="_static/guide.css?v=49d33c82" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installing STAT" href="stat_dependencies.html" />
+    <link rel="prev" title="Introduction" href="stat_introduction.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h1>
+<p>STAT, the Stack Trace Analysis Tool, helps isolate bugs by gathering stack traces from each individual process of a parallel application and merging them into a global, yet compact representation.  Each stack trace, as depicted in <a class="reference internal" href="#mergedtraces"><span class="std std-numref">Fig. 1</span></a>, captures the function calling sequence of an individual process.  The nodes are labeled with the function names and the directed edges show the function calling sequence from caller to callee.  STAT's stack trace merging process forms a call graph prefix tree, which can be seen in <a class="reference internal" href="#mergedtraces"><span class="std std-numref">Fig. 1</span></a>.  The prefix tree groups together traces from different processes that have the same calling sequence and labels the edges with the count and set of tasks that exhibited that calling sequence.  Nodes in the prefix tree that are visited by the same set of tasks are given the same color, providing the user with a quick means of identifying the various process equivalence classes.</p>
+<figure class="align-default" id="mergedtraces">
+<a class="reference internal image-reference" href="_images/trace_and_merge.png"><img alt="A single stack trace (left) and a STAT merged call prefix tree (right)" src="_images/trace_and_merge.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 1 </span><span class="caption-text">A single stack trace (left) and a STAT merged call prefix tree (right)</span><a class="headerlink" href="#mergedtraces" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>STAT merges stack traces into 2D spatial and 3D spatial-temporal call prefix trees. The 2D spatial call prefix tree (<a class="reference internal" href="#prefixtree2d"><span class="std std-numref">Fig. 2</span></a>) represents a single snapshot of the entire application. The 3D spatial-temporal call prefix tree (<a class="reference internal" href="#prefixtree3d"><span class="std std-numref">Fig. 3</span></a>) takes a series of snapshots from the application over time and is useful for analyzing time-varying behavior.</p>
+<figure class="align-default" id="prefixtree2d">
+<a class="reference internal image-reference" href="_images/bgl4k_2d.png"><img alt="A 2D spatial call prefix tree" src="_images/bgl4k_2d.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 2 </span><span class="caption-text">A 2D spatial call prefix tree</span><a class="headerlink" href="#prefixtree2d" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<figure class="align-default" id="prefixtree3d">
+<a class="reference internal image-reference" href="_images/bgl4k_3d.png"><img alt="A 3D spatial call prefix tree" src="_images/bgl4k_3d.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 3 </span><span class="caption-text">A 3D spatial call prefix tree</span><a class="headerlink" href="#prefixtree3d" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>Stack traces based on function names only provide a high-level overview of the application's execution.  However, for certain bugs this view may be too coarse-grained so STAT is also capable of gathering stack traces with more fine-grained information.  In particular, STAT can also record the program counter of each frame or with the appropriate debug information compiled into the application (i.e., with the &quot;-g&quot; compiler flag), STAT can gather the source file and line number of each stack frame.  Both of these refinements can further delineate processes and refine the process equivalence classes.</p>
+<p>In addition, line number information can be fed into a static code analysis engine to derive the logical temporal order of the MPI tasks <a class="reference internal" href="#toexample"><span class="std std-numref">Fig. 4</span></a>. This analysis traverses from the root of the tree towards the leaves, at each step analyzing the control flow of the source code and sorting sibling nodes by the amount of execution progress made through the code.  For straight-line code, this simply means that one task has made more progress if it has executed past the point of another task, i.e., if it has a greater line number. This ordering is partial since two tasks in different branches of an if-else are incomparable. In cases where the program points being compared are within a loop, STAT can extract the loop ordering variable from the application processes and further delineate tasks by execution progress. This analysis is useful for identifying the culprit in a deadlocked or livelocked application, where the problematic task has often either made the least or most progress through the code, leaving the remaining tasks stuck in a barrier or blocked pending a message. Note, this feature is still a prototype.</p>
+<figure class="align-default" id="toexample">
+<a class="reference internal image-reference" href="_images/stat_to_example.png"><img alt="STAT's temporal ordering analysis engine indicates that task 1 has made the least progress.  In this example, task 1 is stuck in a compute cycle, while the other tasks are blocked in MPI communication, waiting for task 1." src="_images/stat_to_example.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 4 </span><span class="caption-text">STAT's temporal ordering analysis engine indicates that task 1 has made the least progress.  In this example, task 1 is stuck in a compute cycle, while the other tasks are blocked in MPI communication, waiting for task 1.</span><a class="headerlink" href="#toexample" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="stat_userguide.html">STAT User Guide</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="stat_auspice.html">Disclaimer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_dependencies.html">Installing STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_description.html">Using the stat-cl Command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statview_description.html">Using the stat-view GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statgui_description.html">Using the stat-gui GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_preference_files.html">Setting STAT Preferences and Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dysectapi_overview.html">Prescription-Based Debugging With Prototype DySectAPI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_at_scale.html">Tips and Tricks Using STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statbench_description.html">Using the stat-bench Emulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_script_description.html">Using the stat-script Python Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_troubleshoot.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="stat_userguide.html">Documentation overview</a><ul>
+      <li>Previous: <a href="stat_introduction.html" title="previous chapter">Introduction</a></li>
+      <li>Next: <a href="stat_dependencies.html" title="next chapter">Installing STAT</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="guide-footer-layout">
+    <div class="guide-footer-content">
+      
+    <div class="footer">
+      &#169;2007-2020, Lawrence Livermore National Security, LLC.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/stat_overview.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+    </div>
+  </div>
+
+  </body>
+</html>

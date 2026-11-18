@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tips and Tricks Using STAT &#8212; STAT User Guide</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=c4d99976" />
+    <link rel="stylesheet" type="text/css" href="_static/guide.css?v=49d33c82" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Using the stat-bench Emulator" href="statbench_description.html" />
+    <link rel="prev" title="Prescription-Based Debugging With Prototype DySectAPI" href="dysectapi_overview.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="tips-and-tricks-using-stat">
+<h1>Tips and Tricks Using STAT<a class="headerlink" href="#tips-and-tricks-using-stat" title="Link to this heading">¶</a></h1>
+<section id="running-stat-at-scale">
+<h2>Running STAT at scale<a class="headerlink" href="#running-stat-at-scale" title="Link to this heading">¶</a></h2>
+<p>STAT is highly scalable and its default analysis has been shown to run effectively on jobs even over one million MPI tasks. Even so, at extreme scales, there are several options that may make STAT's operation even more scalable. The first is to specify the underlying communication tree topology. By default, the <code class="docutils literal notranslate"><span class="pre">stat-cl</span></code> command and <code class="docutils literal notranslate"><span class="pre">stat-gui</span></code> will try to deploy the automatic topology, which defaults to a fanout of 64. STAT will, by default, try to co-locate the communication processes on the application nodes (or associated I/O node on BG systems). To avoid the default co-location option for the <code class="docutils literal notranslate"><span class="pre">stat-cl</span></code> script (remove the <code class="docutils literal notranslate"><span class="pre">-A</span></code> option). For the <code class="docutils literal notranslate"><span class="pre">stat-gui</span></code> GUI, create a preferences file and specify an alternative <code class="docutils literal notranslate"><span class="pre">CP</span> <span class="pre">policy</span></code> option. Refer to the options sections to learn about more topology options.</p>
+<p>Typically, STAT launches one debug daemon per node. This can become a bottleneck if that daemon is resposible for debugging many target processes. STAT has a <code class="docutils literal notranslate"><span class="pre">daemonspernode</span></code> that allows users to request that multiple daemons be launched per node and distribute the target processes between them. This will help offload some of the debugging workload, however, be aware that this will increase STAT's memory usage per node.</p>
+<p>Another consideration at scale is the granularity of debug information. At larger scales, you may prefer to start with coarse-grained analysis. For example, you may not need full task lists for the edge labels, but rather, would like to gather edge labels with just the task count and a representative rank. Within the <code class="docutils literal notranslate"><span class="pre">stat-gui</span></code> GUI, one can then request the full task list of a given edge via the left-click menu of the desired edge's target node. Note, with the <code class="docutils literal notranslate"><span class="pre">stat-cl</span></code> command, the full task lists would not be gathered and thus would not be available for post-mortem analysis via the stat-view GUI. The count and representative granularity will result in faster sampling and smaller output-file size.</p>
+<p>The granularity of the stack traces themselves can also be adjusted to alleviate bottlenecks at scale. In particular, symbol resolution can be expensive, particularly when gathering traces at the function and line level of granularity, but even with the function only granularity. This can cause the many STAT daemons to perform many file operation requests at the same time, straining the target file system. To alleviate this issue, you may gather stack traces with the module and offset granularity. The <code class="docutils literal notranslate"><span class="pre">stat-gui</span></code> and <code class="docutils literal notranslate"><span class="pre">stat-view</span></code> GUIs can later translate the module and offset into function and line number via <code class="docutils literal notranslate"><span class="pre">addr2line</span></code>. This translation feature is available only through a left-click of a module and offset node and will translate the entire prefix tree. Note that the file-system bottleneck can also be mitigated with the <code class="docutils literal notranslate"><span class="pre">--with-fgfs</span></code> configure option, to enable scalable file operations via the <a class="reference external" href="https://github.com/dongahn/FastGlobalFileStatus">FastGlobalFileStatus</a> module.</p>
+</section>
+<section id="using-stat-with-io-watchdog-and-slurm">
+<h2>Using STAT with IO Watchdog and SLURM<a class="headerlink" href="#using-stat-with-io-watchdog-and-slurm" title="Link to this heading">¶</a></h2>
+<p>STAT can be used in conjunction with the <a class="reference external" href="http://code.google.com/p/io-watchdog/">IO Watchdog</a> utility, which monitors application output to detect hangs.  To enable STAT with the IO Watchdog, add the following to the file $HOME/.io-watchdogrc</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>search /usr/local/tools/io-watchdog/actions
+timeout = 20m
+actions = STAT, kill
+</pre></div>
+</div>
+<p>You will then need to run your application with the --io-watchdog <code class="docutils literal notranslate"><span class="pre">srun</span></code> option:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>% srun --io-watchdog mpi_application    
+</pre></div>
+</div>
+<p>When STAT is invoked, it will create a stat_results directory in the current working directory, as it would in a typical STAT run.  The outputted .dot files can then be viewed with <code class="docutils literal notranslate"><span class="pre">stat-view</span></code>.  For more details about using IO Watchdog, refer to the IO Watchdog README file in /usr/local/tools/io-watchdog/README.</p>
+</section>
+<section id="running-stat-in-a-batch-script">
+<h2>Running STAT in a Batch Script<a class="headerlink" href="#running-stat-in-a-batch-script" title="Link to this heading">¶</a></h2>
+<p>A good way to run STAT is at the end of a batch script.  For example, if an application is estimated to take 10 hours to run and 12 hours are allocated, then you may consider your application hung if it is still running up to the 12th hour.  In such a situation, one may choose to run STAT in the last 10 minutes of the allocation to get diagnostic information about the job.</p>
+<p>The following example script demonstrates how one might setup STAT to catch a hung job in a batch script.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>#!/bin/sh
+
+# perform your batch script prologue/setup here
+
+stat_wait_time_minutes=120
+application_exited=0
+
+#run the application and get the launcher PID
+srun mpi_ringtopo &amp;
+pid=$!
+
+# periodically check for application exit
+for i in `seq ${stat_wait_time_minutes}`
+do
+    sleep 60
+    ps -p ${pid}
+    if test $? -eq 1 
+    then
+        # the application exited, so we're done!
+        application_exited=1 
+        break
+    fi
+done
+
+# if the application is still running then invoke STAT 
+if test ${application_exited} -eq 0
+then
+    /usr/local/bin/stat-cl -c ${pid}
+    waitpid ${pid} # alternatively you may want to `kill -TERM ${pid}`
+fi    
+
+# perform your batch script epilogue/cleanup here
+</pre></div>
+</div>
+<p>Within the for loop, the script will check every minute (sleep for 60 seconds between checks) to see if the application is still running by running `ps` on the PID of the job launcher.  If the application has exited, the script will break from the loop and perform any remaining operations in the batch script.  If the wait time, 120 minutes in this example, expires then STAT will be run to gather stack traces from the application.  The wait time should be set such that STAT has enough time to run (i.e., 10 minutes to be safe) within the batch script's allocated time.  Note the -c option to STAT gathers a &quot;comprehensive&quot; set of stack traces, with varying levels of detail.  After STAT completes, the script then waits for the application to exit.  Alternatively, you may want to kill the application if it isn't making any progress.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="stat_userguide.html">STAT User Guide</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="stat_auspice.html">Disclaimer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_dependencies.html">Installing STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_description.html">Using the stat-cl Command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statview_description.html">Using the stat-view GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statgui_description.html">Using the stat-gui GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_preference_files.html">Setting STAT Preferences and Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dysectapi_overview.html">Prescription-Based Debugging With Prototype DySectAPI</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Tips and Tricks Using STAT</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#running-stat-at-scale">Running STAT at scale</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-stat-with-io-watchdog-and-slurm">Using STAT with IO Watchdog and SLURM</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-stat-in-a-batch-script">Running STAT in a Batch Script</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="statbench_description.html">Using the stat-bench Emulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_script_description.html">Using the stat-script Python Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_troubleshoot.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="stat_userguide.html">Documentation overview</a><ul>
+      <li>Previous: <a href="dysectapi_overview.html" title="previous chapter">Prescription-Based Debugging With Prototype DySectAPI</a></li>
+      <li>Next: <a href="statbench_description.html" title="next chapter">Using the stat-bench Emulator</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="guide-footer-layout">
+    <div class="guide-footer-content">
+      
+    <div class="footer">
+      &#169;2007-2020, Lawrence Livermore National Security, LLC.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/stat_at_scale.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+    </div>
+  </div>
+
+  </body>
+</html>

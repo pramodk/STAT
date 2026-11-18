@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Using the stat-view GUI &#8212; STAT User Guide</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=c4d99976" />
+    <link rel="stylesheet" type="text/css" href="_static/guide.css?v=49d33c82" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Using the stat-gui GUI" href="statgui_description.html" />
+    <link rel="prev" title="Using the stat-cl Command" href="stat_description.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="using-the-stat-view-gui">
+<h1>Using the stat-view GUI<a class="headerlink" href="#using-the-stat-view-gui" title="Link to this heading">¶</a></h1>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">stat-view</span></code> (<a class="reference internal" href="#statviewscreenshot"><span class="std std-numref">Fig. 5</span></a>) is a GUI for viewing STAT-outputted dot files.  <code class="docutils literal notranslate"><span class="pre">stat-view</span></code> provides easy navigation of the call prefix tree and also allows manipulation of the call tree to help focus on areas of interest.  Each node in the STAT call prefix tree represents a function call and the directed edges denote the calling sequence.  Further, the edges are labeled by the set of tasks that have taken that call path.  For simplification, stat-view will display the number of tasks in the set and truncate long task lists in the main display with &quot;...&quot; notation.  Similarly, long function node label names will be truncated with &quot;...&quot; notation.  The truncation length can be modified via the File-&gt;Preferences menu (this requires clicking the <strong>Layout</strong> button to rerender any already loaded graphs).  Nodes are colored based on the set of tasks of the incoming edge, providing a visual distinction when different tasks take different branches.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">stat-view</span></code> GUI also allows you to view the application source files in the stack traces, when sampling is done at the source file and line number granularity. This may require the source file's path to be added to the search path, through <strong>File</strong> -&gt; <strong>Add Search Paths</strong>. If an application's source code is edited after STAT is run, the line numbers shown in the stack traces may not be accurate. To alleviate this problem, STAT can optionally cache the source files for the currently displayed .dot file. To cache files click on the <strong>File</strong> -&gt; <strong>Add Search Paths</strong> menu item. This will find and save the source files in the .dot file's stat_results directory. The next time you open the .dot file with <code class="docutils literal notranslate"><span class="pre">stat-view</span></code>, the source files will automatically be loaded from the cache.</p>
+<figure class="stat-view-screenshot align-default" id="statviewscreenshot">
+<a class="reference internal image-reference" href="_images/statview_screenshot.png"><img alt="A screenshot of the stat-view GUI." src="_images/statview_screenshot.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 5 </span><span class="caption-text">A screenshot of the stat-view GUI.</span><a class="headerlink" href="#statviewscreenshot" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="the-stat-view-node-menu">
+<h2>The stat-view Node Menu<a class="headerlink" href="#the-stat-view-node-menu" title="Link to this heading">¶</a></h2>
+<p>By left clicking on a node in the call prefix tree you will get a window displaying the full list of tasks and the full frame label (<a class="reference internal" href="#statguimenu"><span class="std std-numref">Fig. 6</span></a>).  This window also contains buttons that allow for the manipulation of the graph from that node.  Right clicking on a node provides a pop-up menu with the same options.  Note all of these operations are performed on the current visible state of the call prefix tree.</p>
+<figure class="align-default" id="statguimenu">
+<a class="reference internal image-reference" href="_images/statgui_node_dialog.png"><img alt="The node pop-up window" src="_images/statgui_node_dialog.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 6 </span><span class="caption-text">The node pop-up window</span><a class="headerlink" href="#statguimenu" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>The node operations are defined as follows:</p>
+<dl class="simple myst">
+<dt><strong>Advanced</strong></dt><dd><p>Display the full node and edge attributes.</p>
+</dd>
+<dt><strong>Join Equivalence Class</strong></dt><dd><p>collapses all of the descendent nodes with the same equivalence class into the current node and renders in a new tab.</p>
+</dd>
+<dt><strong>Collapse</strong></dt><dd><p>hide all of the descendents of the selected node.</p>
+</dd>
+<dt><strong>Collapse Depth</strong></dt><dd><p>collapse the entire tree to the depth of the selected node.</p>
+</dd>
+<dt><strong>Hide</strong></dt><dd><p>the same as <strong>Collapse</strong>, but also hides the selected node.</p>
+</dd>
+<dt><strong>Expand</strong></dt><dd><p>show (unhide) the immediate children of the selected node.</p>
+</dd>
+<dt><strong>Expand All</strong></dt><dd><p>show (unhide) all descendents of the selected node.</p>
+</dd>
+<dt><strong>Focus</strong></dt><dd><p>hide all nodes that are neither ancestors nor descendents of the selected node. (Note: This will not unhide any hidden ancestors.)</p>
+</dd>
+<dt><strong>View Source</strong></dt><dd><p>creates a popup window (<a class="reference internal" href="#sourceview"><span class="std std-numref">Fig. 7</span></a>) displaying the source file (only for stack traces with line number information). This may require the source file's path to be added to the search path, through <strong>File</strong> -&gt; <strong>Add Search Paths</strong>.</p>
+</dd>
+<dt><strong>Translate</strong></dt><dd><p>For traces with module and offset granularity, this button will translate all node labels into source file and line number information and open the resulting graph in a new tab.</p>
+</dd>
+<dt><strong>Temporally Order Children</strong></dt><dd><p>(prototype only) determine the temporal order of the node's children (only for stack traces with line number information). Requires the source file's path and all include paths to be added to the search path, through <strong>File</strong> -&gt; <strong>Add Search Paths</strong>.</p>
+</dd>
+<dt><strong>OK</strong></dt><dd><p>closes the pop-up window.</p>
+</dd>
+</dl>
+<figure class="align-default" id="sourceview">
+<a class="reference internal image-reference" href="_images/statgui_source_view.png"><img alt="The source view window.  The colored arrows correspond to the nodes in the call prefix tree." src="_images/statgui_source_view.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 7 </span><span class="caption-text">The source view window.  The colored arrows correspond to the nodes in the call prefix tree.</span><a class="headerlink" href="#sourceview" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="the-stat-view-toolbar">
+<h2>The stat-view Toolbar<a class="headerlink" href="#the-stat-view-toolbar" title="Link to this heading">¶</a></h2>
+<p>The main window also has several tree manipulation options (<a class="reference internal" href="#statviewtoolbar"><span class="std std-numref">Fig. 8</span></a>).  Note the initial click of a traversal operation operates on the original call prefix tree, while the remaining operations are performed on the current visible state of the call prefix tree.</p>
+<figure class="align-default" id="statviewtoolbar">
+<a class="reference internal image-reference" href="_images/statview_toolbar.png"><img alt="The stat-view tree manipulation toolbar." src="_images/statview_toolbar.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 8 </span><span class="caption-text">The stat-view tree manipulation toolbar.</span><a class="headerlink" href="#statviewtoolbar" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+<p>The toolbar operations are defined as follows:</p>
+<dl class="simple myst">
+<dt><strong>Open</strong></dt><dd><p>Open a STAT generated .dot file</p>
+</dd>
+<dt><strong>Save As</strong></dt><dd><p>Save the current graph in .dot format, which can be displayed by stat-view or in an image format, such as PNG or PDF, which can be viewed on any computer with an image viewer</p>
+</dd>
+<dt><strong>Undo</strong></dt><dd><p>Undo the previous operation</p>
+</dd>
+<dt><strong>Redo</strong></dt><dd><p>Redo the undone operation</p>
+</dd>
+<dt><strong>Reset</strong></dt><dd><p>Revert to the original graph</p>
+</dd>
+<dt><strong>Layout</strong></dt><dd><p>Reset the layout of the current graph and open in a new tab.  This is useful for compacting wide trees after performing some pruning operations.</p>
+</dd>
+<dt><strong>Cut</strong></dt><dd><p>This feature (<a class="reference internal" href="#statviewprogmodel"><span class="std std-numref">Fig. 9</span></a>) allows you to collapse the prefix tree below the implementation frames for various programming models. For instance, a user may wish to hide all calls that happen within the MPI library.  The programming models may be entered in a configuration file or added by the user. STATview looks for configuration files in $prefix/etc/STAT/STATview_models.conf and in $HOME/.STATview_models.conf. Programming models are specified as regular expressions, using Python's <code class="docutils literal notranslate"><span class="pre">re</span></code> module syntax, and the <code class="docutils literal notranslate"><span class="pre">re.search</span></code> function is used in favor of <code class="docutils literal notranslate"><span class="pre">re.match</span></code>.</p>
+<figure class="align-default" id="statviewprogmodel">
+<a class="reference internal image-reference" href="_images/statview_prog_model.png"><img alt="The stat-view programming model cutting interface." src="_images/statview_prog_model.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 9 </span><span class="caption-text">The stat-view programming model cutting interface.</span><a class="headerlink" href="#statviewprogmodel" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+</dd>
+<dt><strong>[Cut] MPI</strong></dt><dd><p>Collapse the MPI implementation frames below the MPI function call.</p>
+</dd>
+<dt><strong>[Cut] Pthreads</strong></dt><dd><p>Collapse the Pthread implementation frames below the Pthread function call.</p>
+</dd>
+<dt><strong>Join</strong></dt><dd><p>Join consecutive nodes of the same equivalence class into a single node and render in a new tab.  This is useful for condensing long call sequences.</p>
+</dd>
+<dt><strong>[Traverse] Eq C</strong></dt><dd><p>Traverse the prefix tree by expanding the leaves to the next equivalence class set.  The first click will display the top-level equivalence class.</p>
+</dd>
+<dt><strong>[Traverse Longest] Path</strong></dt><dd><p>Traversal focus on the next longest call path(s).  The first click will focus on the longest path.</p>
+</dd>
+<dt><strong>[Traverse Shortest] Path</strong></dt><dd><p>Traversal focus on the next shortest call path(s).  The first click will focus on the shortest path.</p>
+</dd>
+<dt><strong>[Traverse Least] Tasks</strong></dt><dd><p>Traversal focus on the path(s) with the next least visiting tasks.  The first click will focus on the path with the least visiting tasks.</p>
+</dd>
+<dt><strong>[Traverse Most] Tasks</strong></dt><dd><p>Traversal focus on the path(s) with the next most visiting tasks.  The first click will focus on the path with the most visiting tasks.</p>
+</dd>
+<dt><strong>[Traverse Least] TO</strong></dt><dd><p>Temporal Order traversal focus on the path(s) that have made the least execution progress in the application.  The first click will focus on the path that has made the least progress.</p>
+</dd>
+<dt><strong>[Traverse Most] TO</strong></dt><dd><p>Temporal Order traversal focus on the path(s) that have made the most execution progress in the application.  The first click will focus on the path that has made the most progress.</p>
+</dd>
+<dt><strong>Search</strong></dt><dd><p>Search for call paths containing specified text, taken by specified tasks, or from specified hosts.  Search text may be a regular expression, using the syntax described in <a class="reference external" href="http://docs.python.org/library/re.html">http://docs.python.org/library/re.html</a>.</p>
+</dd>
+<dt><strong>[Identify] Eq C</strong></dt><dd><p>Identify the equivalence classes of the visible graph.  After clicking on this button, a window will pop up showing the complete list of equivalence classes.</p>
+</dd>
+</dl>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="stat_userguide.html">STAT User Guide</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="stat_auspice.html">Disclaimer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_dependencies.html">Installing STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_description.html">Using the stat-cl Command</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Using the stat-view GUI</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-stat-view-node-menu">The stat-view Node Menu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-stat-view-toolbar">The stat-view Toolbar</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="statgui_description.html">Using the stat-gui GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_preference_files.html">Setting STAT Preferences and Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dysectapi_overview.html">Prescription-Based Debugging With Prototype DySectAPI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_at_scale.html">Tips and Tricks Using STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statbench_description.html">Using the stat-bench Emulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_script_description.html">Using the stat-script Python Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_troubleshoot.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="stat_userguide.html">Documentation overview</a><ul>
+      <li>Previous: <a href="stat_description.html" title="previous chapter">Using the stat-cl Command</a></li>
+      <li>Next: <a href="statgui_description.html" title="next chapter">Using the stat-gui GUI</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="guide-footer-layout">
+    <div class="guide-footer-content">
+      
+    <div class="footer">
+      &#169;2007-2020, Lawrence Livermore National Security, LLC.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/statview_description.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+    </div>
+  </div>
+
+  </body>
+</html>

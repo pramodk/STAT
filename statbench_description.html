@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Using the stat-bench Emulator &#8212; STAT User Guide</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=c4d99976" />
+    <link rel="stylesheet" type="text/css" href="_static/guide.css?v=49d33c82" />
+    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Using the stat-script Python Interface" href="stat_script_description.html" />
+    <link rel="prev" title="Tips and Tricks Using STAT" href="stat_at_scale.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="using-the-stat-bench-emulator">
+<h1>Using the stat-bench Emulator<a class="headerlink" href="#using-the-stat-bench-emulator" title="Link to this heading">¶</a></h1>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Link to this heading">¶</a></h2>
+<p>The Stack Trace Analysis Tool is a highly scalable, lightweight tool that gathers and merges stack traces from all of the processes of a parallel application.  <code class="docutils literal notranslate"><span class="pre">stat-bench</span></code> is a benchmark that can emulate STAT's performance.  By utilizing your entire parallel allocation (launching one stat-bench daemon emulator per core) and generating artificial stack traces, stat-bench is able model STAT's performance using less resources than an actual STAT run requires.  With various options, you can also map stat-bench to your target machine architecture and target application.  After completion, stat-bench will create a stat_results directory in your current working directory.  This directory will contain a subdirectory for the current run, with the merged stack traces in DOT format as well as a performance results text file.  An example stat-bench generated prefix tree emulating 1M (1024*1024) tasks can be seen in <a class="reference internal" href="#statbench1m3d"><span class="std std-numref">Fig. 17</span></a>.</p>
+<figure class="align-default" id="statbench1m3d">
+<a class="reference internal image-reference" href="_images/statbench_1m_3d.png"><img alt="A stat-bench generated prefix tree emulating over 1 million tasks." src="_images/statbench_1m_3d.png" style="width: 85%;" />
+</a>
+<figcaption>
+<p><span class="caption-number">Fig. 17 </span><span class="caption-text">A stat-bench generated prefix tree emulating over 1 million tasks.</span><a class="headerlink" href="#statbench1m3d" title="Link to this image">¶</a></p>
+</figcaption>
+</figure>
+</section>
+<section id="stat-bench-options">
+<h2>stat-bench Options<a class="headerlink" href="#stat-bench-options" title="Link to this heading">¶</a></h2>
+<dl class="simple myst">
+<dt>-a, --autotopo</dt><dd><p>let STAT automatically create topology.</p>
+</dd>
+<dt>-f, --fanout <em>width</em></dt><dd><p>Sets the maximum tree topology fanout to <em>width</em>.  Specify nodes to launch communications processes on with <code class="docutils literal notranslate"><span class="pre">--nodes</span></code>.</p>
+</dd>
+<dt>-d, --depth <em>depth</em></dt><dd><p>Sets the tree topology depth to <em>depth</em>.  This option takes precedence over the <code class="docutils literal notranslate"><span class="pre">--fanout</span></code> option.  Specify nodes to launch communications processes on with <code class="docutils literal notranslate"><span class="pre">--nodes</span></code>.</p>
+</dd>
+<dt>-u, --usertopology <em>topology</em></dt><dd><p>Specify the number of communication nodes per layer in the tree topology, separated by dashes, with <em>topology</em>.  This option takes precedence over the <code class="docutils literal notranslate"><span class="pre">--fanout</span></code> and <code class="docutils literal notranslate"><span class="pre">--depth</span></code> options.  Specify nodes to launch communications processes on with <code class="docutils literal notranslate"><span class="pre">--nodes</span></code>.  Example topologies: 4, 4-16, 5-20-75.</p>
+</dd>
+<dt>-n, --nodes <em>nodelist</em></dt><dd><p>Use the specified nodes in <em>nodelist</em>.  To be used with <code class="docutils literal notranslate"><span class="pre">--fanout</span></code>, <code class="docutils literal notranslate"><span class="pre">--depth</span></code>, or <code class="docutils literal notranslate"><span class="pre">--usertopology</span></code> options.  Example nodes lists: host1; host1,host2; host[1,5-7,9].</p>
+</dd>
+<dt>-A, --appnodes</dt><dd><p>Allow tool communication processes to be co-located on nodes running application processes.</p>
+</dd>
+<dt>-p, --procs <em>processes</em></dt><dd><p>Sets the maximum number of communication processes to be spawned per node to <em>processes</em>.  This should typically be set to the number of CPUs per node.</p>
+</dd>
+<dt>-D, --daemon <em>path</em></dt><dd><p>Specify the full path <em>path</em> to the STATBenchD daemon executable.  Use this only if you wish to override the default.</p>
+</dd>
+<dt>-F, --filter <em>path</em></dt><dd><p>Specify the full path <em>path</em> to the stat-bench filter shared object.  Use this only if you wish to override the default.</p>
+</dd>
+<dt>-t, --traces <em>count</em></dt><dd><p>Gather <em>count</em> traces per process.</p>
+</dd>
+<dt>-i, --iters <em>count</em></dt><dd><p>Perform <em>count</em> gathers.</p>
+</dd>
+<dt>-n, --numtasks <em>count</em></dt><dd><p>Emulate <em>count</em> tasks per daemon.</p>
+</dd>
+<dt>-m, --maxdepth <em>depth</em></dt><dd><p>Generate traces with a maximum depth of <em>depth</em>.</p>
+</dd>
+<dt>-b, --branch <em>width</em></dt><dd><p>Generate traces with a max branching factor of <em>width</em>.</p>
+</dd>
+<dt>-e, --eqclasses <em>count</em></dt><dd><p>Generate traces within <em>count</em> equivalence classes.</p>
+</dd>
+<dt>-U, --countrep</dt><dd><p>Only gather edge labels with the task count and a single representative.</p>
+</dd>
+<dt>-l, --log [<em>FE</em> | <em>BE</em> | <em>CP</em>]</dt><dd><p>Enable debug logging of the <em>FE</em> frontend, <em>BE</em> backend, or <em>CP</em> communication process. Multiple log options may be specified (i.e., -l FE -l BE).</p>
+</dd>
+<dt>-L, --logdir <em>log_directory</em></dt><dd><p>Dump logging output into <em>log_directory</em>.  To be used with the <code class="docutils literal notranslate"><span class="pre">--log</span></code> option.</p>
+</dd>
+<dt>-M, --mrnetprintf</dt><dd><p>Use MRNet's printf for STAT debug logging.</p>
+</dd>
+</dl>
+</section>
+<section id="stat-bench-usage-example">
+<h2>stat-bench Usage Example<a class="headerlink" href="#stat-bench-usage-example" title="Link to this heading">¶</a></h2>
+<p>In the simplest form, you can invoke stat-bench, from within a parallel allocation, with no arguments.  This will run through with the default settings:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>% stat-bench
+</pre></div>
+</div>
+<p>To model your target machine architecture, you can specify the number of tasks to emulate per daemon.  For instance if your target machine has 16-way SMP compute nodes:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>% stat-bench --numtasks 16
+</pre></div>
+</div>
+<p>You may also want to model a specific application.  For instance, you may have a climate modeling code with 5 distinct task behaviors, or equivalence classes.  You can also specify the maximum call depth of your application, the average branching factor from a given function, and the number of distinct traces expected per task:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>% stat-bench --eqclasses 5 --maxdepth 17 --branch 5 --traces 4
+</pre></div>
+</div>
+<p>At larger scales, you may want to employ a more scalable tree topology.  For example, if you're running 1024 daemon emulators, you may want to try a fanout of sqrt(1024) = 32.  You will need to specify a list of nodes that contains enough processors to accommodate the ceil(1024/32) = 32 communication processes being launched.  Be sure that you have login permissions to the specified nodes and that they contain the mrnet_commnode executable and the STAT_FilterDefinitions.so library:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>% stat-bench --fanout 32 --nodes atlas[1-4] --procs 8
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="stat_userguide.html">STAT User Guide</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="stat_auspice.html">Disclaimer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_dependencies.html">Installing STAT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_description.html">Using the stat-cl Command</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statview_description.html">Using the stat-view GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="statgui_description.html">Using the stat-gui GUI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_preference_files.html">Setting STAT Preferences and Options</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dysectapi_overview.html">Prescription-Based Debugging With Prototype DySectAPI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_at_scale.html">Tips and Tricks Using STAT</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Using the stat-bench Emulator</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#description">Description</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stat-bench-options">stat-bench Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#stat-bench-usage-example">stat-bench Usage Example</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="stat_script_description.html">Using the stat-script Python Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_troubleshoot.html">Troubleshooting Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="stat_bibliography.html">Bibliography</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="stat_userguide.html">Documentation overview</a><ul>
+      <li>Previous: <a href="stat_at_scale.html" title="previous chapter">Tips and Tricks Using STAT</a></li>
+      <li>Next: <a href="stat_script_description.html" title="next chapter">Using the stat-script Python Interface</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+  <div class="guide-footer-layout">
+    <div class="guide-footer-content">
+      
+    <div class="footer">
+      &#169;2007-2020, Lawrence Livermore National Security, LLC.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="_sources/statbench_description.md.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+    </div>
+  </div>
+
+  </body>
+</html>
